@@ -87,12 +87,27 @@ No hay autenticación: **cualquiera** que conozca la URL puede conectarse al rel
 
 ## Docker (opcional)
 
-**Desde la raíz del monorepo** (también lo que hace Railway: contexto = raíz, Dockerfile `relay/Dockerfile`):
+El **contexto** de Docker decide qué Dockerfile va:
+
+| Cómo construís / Railway | Directorio “Root” o contexto | Dockerfile a usar | Comando o ruta en Railway |
+|--------------------------|----------------------------|-------------------|----------------------------|
+| **Raíz del monorepo**     | (vacío) / clon completo    | `Dockerfile.relay` (en la raíz) | `Dockerfile path` = `Dockerfile.relay` o `/Dockerfile.relay` |
+| **Solo carpeta `relay/`** | Root = `relay`             | `Dockerfile` dentro de `relay/` | `Dockerfile path` = `Dockerfile` (a veces `relay/Dockerfile` con Root = `relay`) |
+
+**Local, contexto = raíz del repo:**
 
 ```bash
-docker build -f relay/Dockerfile -t yohualli-relay .
-# equivalente: docker build -f Dockerfile.relay -t yohualli-relay .
-docker run -p 8080:8080 -e PORT=8080 yohualli-relay
+docker build -f Dockerfile.relay -t yohualli-relay .
 ```
 
-En Railway, **deja** `Dockerfile path` = `relay/Dockerfile` (o `/Dockerfile.relay` en la raíz) y **no** apiles “Root = relay” con este Dockerfile: los `COPY` asumen la raíz del repositorio.
+**Local, contexto = `relay/`:**
+
+```bash
+docker build -f Dockerfile -t yohualli-relay .
+# (estando ya en relay/)
+cd relay && docker build -t yohualli-relay .
+```
+
+`docker run -p 8080:8080 -e PORT=8080 yohualli-relay` en ambos casos.
+
+**Importante (Railway):** si el servicio tiene **Root directory = `relay`**, usá el Dockerfile **sin** el prefijo `COPY relay/…` (el de esta carpeta). Si la **Root está vacía** o es el repositorio entero, usá **`Dockerfile.relay` en la raíz**; no mezclés esas dos: si no, vuelve el error `COPY relay/... not found` o el de `index.mjs` en la raíz.
