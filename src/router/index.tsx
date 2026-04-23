@@ -21,6 +21,7 @@ import MountainLogs from '@/pages/MountainLogs'
 import MountainLogDetail from '@/pages/MountainLogDetail'
 import Settings from '@/pages/Settings'
 import Identity from '@/pages/Identity'
+import ZkLab from '@/pages/ZkLab'
 
 // Obtener el base path desde import.meta.env.BASE_URL (configurado por Vite)
 // En desarrollo será '/', en producción será '/aura-pwa/' para GitHub Pages
@@ -142,6 +143,10 @@ export const router = createBrowserRouter([
       {
         path: 'identity',
         element: <Identity />,
+      },
+      {
+        path: 'zk-lab',
+        element: <ZkLab />,
       },
     ],
   },

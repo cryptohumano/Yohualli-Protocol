@@ -14,10 +14,11 @@ if (typeof crypto !== 'undefined' && !crypto.randomUUID) {
   }
 }
 
-// Verificar que crypto.subtle esté disponible
+// Verificar que crypto.subtle esté disponible (p. ej. móvil en http://IP-LAN → usar HTTPS + mkcert)
 if (typeof crypto === 'undefined' || !crypto.subtle) {
-  console.error('⚠️ crypto.subtle no está disponible. Asegúrate de usar HTTPS o localhost.')
-  console.error('La encriptación no funcionará correctamente sin crypto.subtle.')
+  console.error(
+    '⚠️ crypto.subtle no disponible: en el móvil usa https://IP-de-tu-PC:5173 tras bash scripts/setup-https.sh (http://IP no es contexto seguro).'
+  )
 }
 
 import { StrictMode } from 'react'
@@ -28,15 +29,19 @@ import { router } from './router'
 import { KeyringProvider } from './contexts/KeyringContext'
 import { NetworkProvider } from './contexts/NetworkContext'
 import { Toaster } from '@/components/ui/sonner'
+import { InsecureContextBanner } from '@/components/dev/InsecureContextBanner'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <KeyringProvider>
-      <NetworkProvider>
-        <RouterProvider router={router} />
-        <Toaster />
-      </NetworkProvider>
-    </KeyringProvider>
+    <div className="flex min-h-screen flex-col">
+      <InsecureContextBanner />
+      <KeyringProvider>
+        <NetworkProvider>
+          <RouterProvider router={router} />
+          <Toaster />
+        </NetworkProvider>
+      </KeyringProvider>
+    </div>
   </StrictMode>,
 )
 

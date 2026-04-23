@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Keyring } from '@polkadot/keyring'
-import { cryptoWaitReady, mnemonicGenerate } from '@polkadot/util-crypto'
+import { cryptoWaitReady, mnemonicGenerate, decodeAddress } from '@polkadot/util-crypto'
 import { u8aToHex, hexToU8a } from '@polkadot/util'
 import type { KeyringPair } from '@polkadot/keyring/types'
 import { encrypt, decrypt } from '@/utils/encryption'
@@ -8,6 +8,7 @@ import {
   saveEncryptedAccount, 
   getAllEncryptedAccounts, 
   deleteEncryptedAccount,
+  verifyWalletStoragePassword,
   type EncryptedAccount 
 } from '@/utils/secureStorage'
 import {
@@ -19,6 +20,13 @@ import {
   updateWebAuthnCredentialUsage,
   getAllWebAuthnCredentials
 } from '@/utils/webauthnStorage'
+import {
+  deriveDualSubstrateSs58ForDisplay,
+  isDualSubstrateEligible,
+  type DualSubstrateSs58,
+} from '@/utils/substrateDualSs58'
+import { deriveBip44EthereumAddressFromSuri, evmBip44PrivateKey0xFromSuri } from '@/utils/ethereum'
+import { parseDerivationMaterial, type Bip39DerivationMaterial, type RawKeyDerivationMaterial } from '@/utils/seedExport'
 
 export interface KeyringAccount {
   pair: KeyringPair
@@ -27,6 +35,70 @@ export interface KeyringAccount {
   meta: {
     name?: string
     [key: string]: any
+  }
+  /** Misma URI/mnemonic: vistas SS58 sr25519, ed25519 y ecdsa (solo material de derivación local). */
+  dualSubstrateSs58?: DualSubstrateSs58
+  /** 0x cuenta 0 (BIP44), misma convención que MetaMask; solo si hay SURI/frase en almacenamiento local. */
+  evmBip44Address?: string
+  /**
+   * Solo en sesión desbloqueada: SURI o frase BIP39 con la que se cargó la cuenta (no se persiste en IndexedDB).
+   * Permite derivar `m/44'/60'/10'/0/0` con viem (EIP-712 Yohualli) sin extensión. Ausente en cuentas importadas solo desde JSON de Polkadot.js.
+   */
+  hdDerivationSuri?: string
+}
+
+/**
+ * Con cuentas ya en IndexedDB, toda importación/creación debe cifrarse con la
+ * misma contraseña; si no, o no se persiste, o otra clave hace que no desencripte al abrir.
+ */
+async function requireWalletStoragePasswordIfHasStored(
+  storagePassword: string | undefined
+): Promise<void> {
+  const existing = await getAllEncryptedAccounts()
+  if (existing.length === 0) return
+  if (!storagePassword?.trim()) {
+    throw new Error(
+      'Ya tienes cuentas guardadas en el dispositivo. Indica la misma contraseña de cifrado con la que desbloqueas la billetera para añadir otra cuenta a IndexedDB.'
+    )
+  }
+  if (!(await verifyWalletStoragePassword(storagePassword))) {
+    throw new Error(
+      'La contraseña de cifrado no coincide con la de las cuentas guardadas. Usa exactamente la misma con la que abres el wallet; si la cambias, las cuentas anteriores no se podrán abrir con una sola apertura.'
+    )
+  }
+}
+
+const ACTIVE_ACCOUNT_STORAGE_KEY = 'yohualli.activeAccount'
+
+function readStoredActiveAccountAddress(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return localStorage.getItem(ACTIVE_ACCOUNT_STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+function buildKeyringAccount(
+  keyring: Keyring,
+  pair: KeyringPair,
+  seedForDual?: string
+): KeyringAccount {
+  const dualSubstrateSs58 =
+    seedForDual && isDualSubstrateEligible(pair.type)
+      ? deriveDualSubstrateSs58ForDisplay(keyring, seedForDual) ?? undefined
+      : undefined
+  const evmBip44Address = seedForDual
+    ? deriveBip44EthereumAddressFromSuri(seedForDual) ?? undefined
+    : undefined
+  return {
+    pair,
+    address: pair.address,
+    publicKey: pair.publicKey,
+    meta: pair.meta,
+    ...(dualSubstrateSs58 ? { dualSubstrateSs58 } : {}),
+    ...(evmBip44Address ? { evmBip44Address } : {}),
+    ...(seedForDual ? { hdDerivationSuri: seedForDual } : {}),
   }
 }
 
@@ -37,6 +109,8 @@ export function useKeyring() {
   const [isUnlocked, setIsUnlocked] = useState(false)
   const [hasStoredAccounts, setHasStoredAccounts] = useState(false)
   const [hasWebAuthnCredentials, setHasWebAuthnCredentials] = useState(false)
+  /** Cuenta usada por defecto en flujos multi-cuenta; persiste en `localStorage` aunque la sesión esté bloqueada. */
+  const [activeAccountAddress, setActiveAccountAddress] = useState<string | null>(readStoredActiveAccountAddress)
 
   // Función para verificar y actualizar el estado de credenciales WebAuthn
   const checkWebAuthnCredentials = useCallback(async () => {
@@ -67,6 +141,34 @@ export function useKeyring() {
       return false
     }
   }, [])
+
+  useEffect(() => {
+    try {
+      if (activeAccountAddress) {
+        localStorage.setItem(ACTIVE_ACCOUNT_STORAGE_KEY, activeAccountAddress)
+      } else {
+        localStorage.removeItem(ACTIVE_ACCOUNT_STORAGE_KEY)
+      }
+    } catch {
+      /* no-op */
+    }
+  }, [activeAccountAddress])
+
+  useEffect(() => {
+    if (accounts.length === 0) {
+      return
+    }
+    const inList =
+      activeAccountAddress != null && accounts.some((a) => a.address === activeAccountAddress)
+    if (!inList) {
+      setActiveAccountAddress(accounts[0]!.address)
+    }
+  }, [accounts, activeAccountAddress])
+
+  const activeAccount = useMemo((): KeyringAccount | undefined => {
+    if (!activeAccountAddress) return undefined
+    return accounts.find((a) => a.address === activeAccountAddress)
+  }, [accounts, activeAccountAddress])
 
   useEffect(() => {
     let isMounted = true // Flag para evitar actualizaciones después de desmontar
@@ -172,12 +274,7 @@ export function useKeyring() {
               }
             }
             
-            loadedAccounts.push({
-              pair,
-              address: pair.address,
-              publicKey: pair.publicKey,
-              meta: pair.meta,
-            })
+            loadedAccounts.push(buildKeyringAccount(keyring, pair))
             console.log(`[Keyring] ✅ Cuenta de Polkadot.js cargada y desbloqueada: ${pair.address}`)
           } else {
             // Es una cuenta normal (mnemonic/uri)
@@ -200,12 +297,7 @@ export function useKeyring() {
               console.warn(`[Keyring] ⚠️ Dirección no coincide: esperada ${encAccount.address}, obtenida ${pair.address}`)
             }
             
-            loadedAccounts.push({
-              pair,
-              address: pair.address,
-              publicKey: pair.publicKey,
-              meta: pair.meta,
-            })
+            loadedAccounts.push(buildKeyringAccount(keyring, pair, seed))
             console.log(`[Keyring] ✅ Cuenta cargada: ${pair.address} (tipo: ${type || 'sr25519'})`)
           }
         } catch (error) {
@@ -317,12 +409,7 @@ export function useKeyring() {
           }
           
           const pair = keyring.addFromUri(seed, encAccount.meta, type || 'sr25519')
-          loadedAccounts.push({
-            pair,
-            address: pair.address,
-            publicKey: pair.publicKey,
-            meta: pair.meta,
-          })
+          loadedAccounts.push(buildKeyringAccount(keyring, pair, seed))
           console.log(`[Keyring] ✅ Cuenta cargada: ${pair.address}`)
         } catch (error) {
           // Si falla, la cuenta puede estar encriptada con contraseña, no con WebAuthn
@@ -391,16 +478,13 @@ export function useKeyring() {
     }
 
     try {
+      await requireWalletStoragePasswordIfHasStored(password)
+
       // 1. Agregar al keyring
       const pair = keyring.addFromUri(mnemonic, { name: name || 'Account' }, type)
       console.log(`[Keyring] ✅ Cuenta agregada al keyring: ${pair.address}`)
       
-      const account: KeyringAccount = {
-        pair,
-        address: pair.address,
-        publicKey: pair.publicKey,
-        meta: pair.meta,
-      }
+      const account = buildKeyringAccount(keyring, pair, mnemonic.trim())
 
       // 2. Actualizar estado React
       setAccounts((prev) => {
@@ -439,6 +523,7 @@ export function useKeyring() {
         console.warn(`[Keyring] ⚠️ Cuenta ${account.address} agregada al keyring pero NO guardada en IndexedDB (sin contraseña). Se perderá al bloquear el keyring.`)
       }
 
+      setActiveAccountAddress(account.address)
       return account
     } catch (error) {
       console.error('[Keyring] ❌ Error al agregar cuenta desde mnemonic:', error)
@@ -481,6 +566,8 @@ export function useKeyring() {
     }
 
     try {
+      await requireWalletStoragePasswordIfHasStored(password)
+
       // Validar formato JSON de Polkadot.js
       if (!('address' in jsonData) || !('encoded' in jsonData)) {
         throw new Error('El JSON no tiene el formato correcto de Polkadot.js (falta address o encoded)')
@@ -502,12 +589,7 @@ export function useKeyring() {
         }
       }
 
-      const account: KeyringAccount = {
-        pair,
-        address: pair.address,
-        publicKey: pair.publicKey,
-        meta: pair.meta,
-      }
+      const account = buildKeyringAccount(keyring, pair)
 
       // Actualizar estado React
       setAccounts((prev) => {
@@ -571,6 +653,7 @@ export function useKeyring() {
         console.warn(`[Keyring] ⚠️ Cuenta ${account.address} agregada al keyring pero NO guardada en IndexedDB (sin contraseña). Se perderá al bloquear el keyring.`)
       }
 
+      setActiveAccountAddress(account.address)
       return account
     } catch (error) {
       console.error('[Keyring] ❌ Error al agregar cuenta desde JSON:', error)
@@ -585,16 +668,13 @@ export function useKeyring() {
     }
 
     try {
+      await requireWalletStoragePasswordIfHasStored(password)
+
       // 1. Agregar al keyring
       const pair = keyring.addFromUri(uri, { name: name || 'Account' }, type)
       console.log(`[Keyring] ✅ Cuenta agregada al keyring: ${pair.address}`)
       
-      const account: KeyringAccount = {
-        pair,
-        address: pair.address,
-        publicKey: pair.publicKey,
-        meta: pair.meta,
-      }
+      const account = buildKeyringAccount(keyring, pair, uri.trim())
 
       // 2. Actualizar estado React
       setAccounts((prev) => {
@@ -633,6 +713,7 @@ export function useKeyring() {
         console.warn(`[Keyring] ⚠️ Cuenta ${account.address} agregada al keyring pero NO guardada en IndexedDB (sin contraseña). Se perderá al bloquear el keyring.`)
       }
 
+      setActiveAccountAddress(account.address)
       return account
     } catch (error) {
       console.error('[Keyring] ❌ Error al agregar cuenta desde URI:', error)
@@ -665,20 +746,59 @@ export function useKeyring() {
     return accounts.find((acc) => acc.address === address)
   }, [accounts])
 
+  /**
+   * Clave EVM (BIP44, **m/44'/60'/0'/0/0**) en `0x`+64hex para `PRIVATE_KEY` (Hardhat, `cast`, etc.)
+   * Solo si en sesión hay `hdDerivationSuri` (import por frase/SURI). Cuentas solo-JSON: `null`.
+   */
+  const getEvmBip44PrivateKey0x = useCallback(
+    (ss58Address: string): `0x${string}` | null => {
+      if (!isUnlocked) return null
+      const acc = accounts.find((a) => a.address === ss58Address)
+      const suri = acc?.hdDerivationSuri
+      if (!suri) return null
+      return evmBip44PrivateKey0xFromSuri(suri)
+    },
+    [accounts, isUnlocked]
+  )
+
+  const getDerivationMaterial = useCallback(
+    (ss58Address: string): Bip39DerivationMaterial | RawKeyDerivationMaterial | null => {
+      if (!isUnlocked) return null
+      const suri = accounts.find((a) => a.address === ss58Address)?.hdDerivationSuri
+      if (!suri) return null
+      return parseDerivationMaterial(suri)
+    },
+    [accounts, isUnlocked]
+  )
+
   const setSS58Format = useCallback((format: number) => {
     if (!keyring) return
     keyring.setSS58Format(format)
     // Actualizar direcciones de todas las cuentas
-    setAccounts((prev) => prev.map((acc) => ({
-      ...acc,
-      address: acc.pair.address,
-    })))
+    setAccounts((prev) =>
+      prev.map((acc) => ({
+        ...acc,
+        address: acc.pair.address,
+        dualSubstrateSs58: acc.dualSubstrateSs58
+          ? {
+              sr25519: keyring.encodeAddress(decodeAddress(acc.dualSubstrateSs58.sr25519)),
+              ed25519: keyring.encodeAddress(decodeAddress(acc.dualSubstrateSs58.ed25519)),
+              ecdsa: keyring.encodeAddress(decodeAddress(acc.dualSubstrateSs58.ecdsa)),
+            }
+          : undefined,
+        evmBip44Address: acc.evmBip44Address,
+        hdDerivationSuri: acc.hdDerivationSuri,
+      }))
+    )
   }, [keyring])
 
   return {
     keyring,
     isReady,
     accounts,
+    activeAccount,
+    activeAccountAddress,
+    setActiveAccountAddress,
     isUnlocked,
     hasStoredAccounts,
     hasWebAuthnCredentials,
@@ -691,6 +811,8 @@ export function useKeyring() {
     addFromJson,
     removeAccount,
     getAccount,
+    getEvmBip44PrivateKey0x,
+    getDerivationMaterial,
     setSS58Format,
     refreshWebAuthnCredentials: checkWebAuthnCredentials,
     refreshStoredAccounts: checkStoredAccounts,

@@ -1,0 +1,15 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.28"
+# London/Paris: sin PUSH0 (EIP-3855; chain 420420417 lo advierte aunque el binario vaya sin 5f).
+# Polkadot Hub testnet: `paris` rinde bien; si aún viera bytecode viejo, `forge clean && forge build`.
+evm_version = "paris"
+optimizer = true
+# Un run baja el tamaño de despliegue; el verificador Honk suele pasar del límite EIP-170 con runs altas.
+optimizer_runs = 1
+bytecode_hash = "none"
+cbor_metadata = false
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

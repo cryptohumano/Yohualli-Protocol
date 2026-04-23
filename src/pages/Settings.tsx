@@ -194,7 +194,7 @@ export default function Settings() {
       <div>
         <h1 className="text-3xl font-bold">Configuración</h1>
         <p className="text-muted-foreground mt-2">
-          Gestiona la configuración de Aura Wallet
+          Gestiona la configuración de Yohualli Protocol
         </p>
       </div>
 

@@ -26,25 +26,33 @@ if ! mkcert -CAROOT &> /dev/null; then
     mkcert -install
 fi
 
-# Obtener la IP local
-LOCAL_IP=$(hostname -I | awk '{print $1}')
-if [ -z "$LOCAL_IP" ]; then
-    LOCAL_IP=$(ip route get 1.1.1.1 | awk '{print $7; exit}')
+# Todas las IPv4 locales (útil si hay Wi‑Fi + Ethernet; mkcert acepta varias SAN)
+LOCAL_IPS=$(hostname -I 2>/dev/null || true)
+if [ -z "$LOCAL_IPS" ]; then
+    ONE=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}')
+    LOCAL_IPS="$ONE"
 fi
+# Primera IP solo para mensajes
+LOCAL_IP=$(echo "$LOCAL_IPS" | awk '{print $1}')
 
-echo "🌐 IP local detectada: $LOCAL_IP"
+echo "🌐 IPs incluidas en el certificado: $LOCAL_IPS"
 
 # Generar certificados
 echo "🔑 Generando certificados SSL..."
-mkcert -key-file .certs/key.pem -cert-file .certs/cert.pem localhost 127.0.0.1 ::1 $LOCAL_IP
+mkcert -key-file .certs/key.pem -cert-file .certs/cert.pem localhost 127.0.0.1 ::1 $LOCAL_IPS
 
 echo ""
 echo "✅ Certificados generados en .certs/"
 echo ""
-echo "📱 Para acceder desde tu móvil:"
-echo "   1. Asegúrate de que tu PC y móvil estén en la misma red WiFi"
-echo "   2. En tu móvil, abre: https://$LOCAL_IP:5173"
-echo "   3. Acepta el certificado (será marcado como no confiable, es normal en desarrollo)"
+CAROOT=$(mkcert -CAROOT)
+echo "📱 Para acceder desde tu móvil (crypto.subtle / wallet):"
+echo "   1. Misma Wi‑Fi que el PC."
+echo "   2. Abre https://$LOCAL_IP:5173 (o otra IP listada arriba si aplica)."
+echo "   3. Chrome/Android: sin instalar la CA verás aviso de certificado → Avanzado → continuar (a veces basta para subtle)."
+echo "      Para evitar avisos: instala en el móvil el fichero rootCA.pem de mkcert:"
+echo "         $CAROOT/rootCA.pem"
+echo "   4. No uses \"localhost\" en el móvil para llegar al PC: localhost es el propio teléfono."
 echo ""
-echo "🚀 Inicia el servidor con: yarn dev:https"
+echo "🚀 Inicia el servidor con: yarn dev   (HTTPS se activa solo si existen .certs/)"
+echo "   Forzar solo HTTP: VITE_DEV_PLAIN_HTTP=1 yarn dev"
 

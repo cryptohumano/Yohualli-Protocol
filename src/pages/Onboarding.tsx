@@ -105,7 +105,7 @@ export default function Onboarding() {
             <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
               <Sparkles className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="text-3xl">Bienvenido a Aura Wallet</CardTitle>
+            <CardTitle className="text-3xl">Bienvenido a Yohualli Protocol</CardTitle>
             <CardDescription className="text-lg mt-2">
               Tu wallet criptográfica segura y privada
             </CardDescription>
@@ -242,7 +242,7 @@ export default function Onboarding() {
             <Alert>
               <Shield className="h-4 w-4" />
               <AlertDescription className="text-sm">
-                <strong>Importante:</strong> Aura Wallet es una aplicación no custodial.
+                <strong>Importante:</strong> Yohualli Protocol es una aplicación no custodial.
                 Tú eres el único responsable de tus claves privadas y fondos. 
                 <ul className="list-disc list-inside mt-2 space-y-1">
                   <li>Guarda tu frase de recuperación (mnemonic) en un lugar seguro</li>

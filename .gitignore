@@ -11,6 +11,14 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
+!.env.forge.example
+.env.forge.local
+.yohualli-mnemonic.tmp
+*.tsbuildinfo
+package-lock.json
 
 # Editor directories and files
 .vscode/*
@@ -22,4 +30,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Noir / nargo
+circuits/**/target/
 

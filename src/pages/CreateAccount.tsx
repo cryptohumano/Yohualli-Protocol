@@ -1,23 +1,20 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useKeyringContext } from '@/contexts/KeyringContext'
 import { ArrowLeft, Copy, Check } from 'lucide-react'
 import { Link } from 'react-router-dom'
-
-type CryptoType = 'sr25519' | 'ed25519' | 'ecdsa'
+import { getAllEncryptedAccounts, verifyWalletStoragePassword } from '@/utils/secureStorage'
 
 export default function CreateAccount() {
   const navigate = useNavigate()
   const { generateMnemonic, addFromMnemonic, isUnlocked } = useKeyringContext()
   const [step, setStep] = useState<'form' | 'backup' | 'password'>('form')
   const [name, setName] = useState('')
-  const [type, setType] = useState<CryptoType>('sr25519')
   const [mnemonic, setMnemonic] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -25,6 +22,13 @@ export default function CreateAccount() {
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [hasOtherStoredAccounts, setHasOtherStoredAccounts] = useState(false)
+
+  useEffect(() => {
+    void getAllEncryptedAccounts()
+      .then((a) => setHasOtherStoredAccounts(a.length > 0))
+      .catch(() => setHasOtherStoredAccounts(false))
+  }, [])
 
   if (!isUnlocked) {
     navigate('/')
@@ -70,9 +74,19 @@ export default function CreateAccount() {
       return
     }
 
+    if (hasOtherStoredAccounts) {
+      const ok = await verifyWalletStoragePassword(password)
+      if (!ok) {
+        setError(
+          'La contraseña debe ser la misma con la que cifraste y desbloqueas el resto de cuentas en este dispositivo, no una nueva distinta por cuenta.'
+        )
+        return
+      }
+    }
+
     setLoading(true)
     try {
-      const account = await addFromMnemonic(mnemonic, name, type, password)
+      const account = await addFromMnemonic(mnemonic, name, 'sr25519', password)
       if (account) {
         navigate('/accounts')
       } else {
@@ -120,29 +134,11 @@ export default function CreateAccount() {
               />
             </div>
 
-            <div className="space-y-3">
-              <Label>Tipo de Criptografía</Label>
-              <RadioGroup value={type} onValueChange={(v) => setType(v as CryptoType)}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="sr25519" id="sr25519" />
-                  <Label htmlFor="sr25519" className="font-normal cursor-pointer">
-                    sr25519 (Schnorrkel) - Recomendado para Substrate
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="ed25519" id="ed25519" />
-                  <Label htmlFor="ed25519" className="font-normal cursor-pointer">
-                    ed25519 (Edwards) - Alternativa común
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="ecdsa" id="ecdsa" />
-                  <Label htmlFor="ecdsa" className="font-normal cursor-pointer">
-                    ecdsa - Compatible con Ethereum
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
+            <p className="text-sm text-muted-foreground rounded-md border border-dashed px-3 py-2">
+              La cuenta se guarda con par <strong>sr25519</strong> (uso habitual en Substrate). Desde la misma
+              frase derivamos y mostramos también las vistas <strong>ed25519</strong>, <strong>ecdsa</strong> (SS58)
+              y la dirección <strong>EVM</strong> (BIP44) en Cuentas; no hace falta elegir el tipo a mano.
+            </p>
 
             <Button onClick={handleGenerate} className="w-full" size="lg">
               Generar Nueva Cuenta
@@ -266,7 +262,9 @@ export default function CreateAccount() {
           <CardHeader>
             <CardTitle>Contraseña de Seguridad</CardTitle>
             <CardDescription>
-              Esta contraseña se usará para encriptar y proteger tu cuenta en este dispositivo
+              {hasOtherStoredAccounts
+                ? 'Indica la misma contraseña con la que ya cifraste y desbloqueas el resto de cuentas en este dispositivo. Todas las cuentas comparten una sola clave de cifrado (IndexedDB).'
+                : 'Esta contraseña se usará para encriptar y proteger tu cuenta en este dispositivo'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

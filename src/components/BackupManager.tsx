@@ -308,6 +308,14 @@ export function BackupManager({ onImportComplete }: BackupManagerProps = {}) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription className="text-sm">
+                Las cuentas en el JSON se exportan como <code className="text-xs">encryptedData</code> cifrado (igual
+                que en el almacenamiento local). No verás frase de recuperación ni claves en claro en el archivo: para
+                mostrar material sensible usa la app desbloqueada, menú de cuenta → «Claves y frase».
+              </AlertDescription>
+            </Alert>
             <div className="space-y-3">
               <Label className="text-sm font-medium">Opciones de exportación</Label>
               <div className="space-y-2">

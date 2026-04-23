@@ -28,13 +28,21 @@ export default function SignatureSelector({
   onSigned,
   onCancel,
 }: SignatureSelectorProps) {
-  const { accounts, getAccount } = useKeyringContext()
-  // Inicializar con la cuenta del autor si existe, o la primera cuenta disponible
-  const defaultAccount = document.relatedAccount || accounts[0]?.address || ''
-  const [selectedAccount, setSelectedAccount] = useState<string>(defaultAccount)
+  const { accounts, getAccount, activeAccountAddress } = useKeyringContext()
+  const [selectedAccount, setSelectedAccount] = useState<string>(
+    () => document.relatedAccount || activeAccountAddress || accounts[0]?.address || ''
+  )
   const [signatureImage, setSignatureImage] = useState<string | null>(null)
   const [isSigning, setIsSigning] = useState(false)
   const [activeTab, setActiveTab] = useState<'substrate' | 'autographic'>('substrate')
+
+  useEffect(() => {
+    if (document.relatedAccount) {
+      setSelectedAccount(document.relatedAccount)
+    } else if (activeAccountAddress) {
+      setSelectedAccount(activeAccountAddress)
+    }
+  }, [document.documentId, document.relatedAccount, activeAccountAddress])
 
   // Cargar firma autográfica guardada si existe para la cuenta seleccionada
   useEffect(() => {

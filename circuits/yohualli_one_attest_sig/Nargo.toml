@@ -1,0 +1,6 @@
+[package]
+name = "yohualli_one_attest_sig"
+type = "bin"
+authors = [""]
+
+[dependencies]

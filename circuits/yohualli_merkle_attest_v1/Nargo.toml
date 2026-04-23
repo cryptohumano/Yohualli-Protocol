@@ -1,0 +1,6 @@
+[package]
+name = "yohualli_merkle_attest_v1"
+type = "bin"
+authors = [""]
+
+[dependencies]

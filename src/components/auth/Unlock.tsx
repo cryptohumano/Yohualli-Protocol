@@ -86,51 +86,52 @@ export function Unlock() {
             </TabsList>
 
             <TabsContent value="password" className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="password">Contraseña</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleUnlock()
-                      }
-                    }}
-                    placeholder="Ingresa tu contraseña"
-                    className="pr-10"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <Button
-                onClick={handleUnlock}
-                className="w-full"
-                disabled={loading || !password}
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  if (!loading && password) void handleUnlock()
+                }}
               >
-                {loading ? 'Desbloqueando...' : 'Desbloquear'}
-              </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Contraseña</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      name="password"
+                      autoComplete="current-password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Ingresa tu contraseña"
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                <Button type="submit" className="w-full" disabled={loading || !password}>
+                  {loading ? 'Desbloqueando...' : 'Desbloquear'}
+                </Button>
+              </form>
             </TabsContent>
 
             {hasWebAuthnCredentials && (

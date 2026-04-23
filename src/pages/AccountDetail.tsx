@@ -7,6 +7,8 @@ import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useKeyringContext } from '@/contexts/KeyringContext'
 import { useMultiChainBalances } from '@/hooks/useMultiChainBalances'
+import { DEFAULT_CHAINS } from '@/hooks/useDedotClient'
+import { deriveEthereumAddressFromPair } from '@/utils/ethereum'
 import { formatBalanceForDisplay, getChainSymbol } from '@/utils/balance'
 import Identicon from '@polkadot/react-identicon'
 import { Avatar } from '@/components/ui/avatar'
@@ -25,6 +27,7 @@ import {
   Wallet
 } from 'lucide-react'
 import { getEncryptedAccount } from '@/utils/secureStorage'
+import { DualSubstrateAddressLines } from '@/components/DualSubstrateAddressLines'
 import type { EncryptedAccount } from '@/utils/secureStorage'
 
 export default function AccountDetail() {
@@ -35,8 +38,14 @@ export default function AccountDetail() {
   const [accountDetails, setAccountDetails] = useState<EncryptedAccount | null>(null)
 
   const account = address ? getAccount(address) : null
+  const evmBalanceAddress =
+    account?.evmBip44Address ??
+    (account ? deriveEthereumAddressFromPair(account.pair) : null) ??
+    null
   const { balances, isLoading: isLoadingBalances, error: balanceError, lastUpdate } = useMultiChainBalances(
-    address || null
+    address || null,
+    DEFAULT_CHAINS,
+    evmBalanceAddress
   )
 
   // Cargar detalles de la cuenta desde IndexedDB
@@ -106,9 +115,10 @@ export default function AccountDetail() {
     )
   }
 
-  // Calcular balance total en todas las cadenas
-  const totalBalance = balances.reduce((sum, balance) => sum + balance.total, BigInt(0))
-  const primaryChain = balances.length > 0 ? balances[0].chainName : 'Polkadot'
+  // Suma solo Substrate (plancks); EVM usa wei PAS (18 dec) y no es comparable en una sola suma
+  const substrateBalances = balances.filter((b) => !b.chain.startsWith('evm:'))
+  const totalBalance = substrateBalances.reduce((sum, balance) => sum + balance.total, BigInt(0))
+  const primaryChain = substrateBalances.length > 0 ? substrateBalances[0].chainName : 'Polkadot'
 
   return (
     <div className="space-y-6">
@@ -171,24 +181,29 @@ export default function AccountDetail() {
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <code className="text-sm font-mono text-muted-foreground break-all">
-                  {account.address}
-                </code>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                  onClick={handleCopyAddress}
-                  title="Copiar dirección"
-                >
-                  {copiedAddress ? (
-                    <Check className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
+              {account.dualSubstrateSs58 ? (
+                <DualSubstrateAddressLines
+                  dual={account.dualSubstrateSs58}
+                  evmAddress={account.evmBip44Address}
+                />
+              ) : (
+                <div className="flex items-center gap-2">
+                  <code className="text-sm font-mono text-muted-foreground break-all">{account.address}</code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={handleCopyAddress}
+                    title="Copiar dirección"
+                  >
+                    {copiedAddress ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -307,7 +322,10 @@ export default function AccountDetail() {
               <div className="p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Balance Total (Todas las Cadenas)</p>
+                    <p className="text-sm text-muted-foreground">Balance total (cadenas Substrate)</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      El saldo PAS en la red EVM de Paseo se muestra en su propia tarjeta (wei, 18 decimales).
+                    </p>
                     <p className="text-2xl font-bold mt-1">
                       {formatBalanceForDisplay(totalBalance, primaryChain)}
                     </p>
@@ -357,6 +375,16 @@ export default function AccountDetail() {
                             {formatBalanceForDisplay(balance.total, balance.chainName)}
                           </span>
                         </div>
+                        {balance.rpcUrl ? (
+                          <div className="pt-2 space-y-0.5">
+                            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                              RPC JSON-RPC
+                            </p>
+                            <code className="text-[10px] font-mono break-all text-muted-foreground block">
+                              {balance.rpcUrl}
+                            </code>
+                          </div>
+                        ) : null}
                         {balance.nonce !== undefined && (
                           <div className="flex justify-between text-xs text-muted-foreground pt-1">
                             <span>Nonce:</span>

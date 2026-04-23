@@ -25,6 +25,8 @@ export interface BackupData {
     description?: string
     includesImages?: boolean // Si incluye imágenes completas (base64)
     includesPDFs?: boolean // Si incluye PDFs completos (base64)
+    /** Si es true, el JSON no contiene frases ni claves en claro; solo `encryptedData` cifrado con la contraseña de la app. */
+    secretsNotInPlainText?: boolean
   }
 }
 
@@ -283,10 +285,12 @@ export async function exportBackup(options: {
     mountainLogs: mountainLogs.length > 0 ? mountainLogs : undefined,
     documents: documents.length > 0 ? documents : undefined,
     metadata: {
-      appName: 'Andino Wallet',
-      description: 'Backup de datos de Andino Wallet',
+      appName: 'Yohualli Protocol',
+      description:
+        'Respaldo cifrado de Yohualli Protocol. Las cuentas van como `encryptedData` (no hay mnemónicos ni claves en claro en este archivo).',
       includesImages: includeImages,
       includesPDFs: includePDFs,
+      secretsNotInPlainText: true,
     },
   }
 
@@ -310,7 +314,7 @@ export async function downloadBackup(options: {
     
     const json = JSON.stringify(backup, null, 2)
     const blob = new Blob([json], { type: 'application/json' })
-    const filename = `aura-wallet-backup-${new Date().toISOString().split('T')[0]}.json`
+    const filename = `yohualli-protocol-backup-${new Date().toISOString().split('T')[0]}.json`
     
     console.log('[Backup] Blob creado, tamaño:', blob.size, 'bytes')
     
@@ -323,8 +327,8 @@ export async function downloadBackup(options: {
         if (navigator.canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
-            title: 'Aura Wallet Backup',
-            text: 'Respaldo de mi wallet Aura',
+            title: 'Yohualli Protocol — respaldo',
+            text: 'Respaldo cifrado de Yohualli Protocol (sin claves en claro en el JSON).',
           })
           console.log('[Backup] ✅ Backup compartido usando Share API')
           return
@@ -400,7 +404,7 @@ export function readBackupFile(file: File): Promise<BackupData> {
         const parsed = JSON.parse(text)
         
         // Verificar si es un backup de Polkadot.js (tiene 'encoded' y 'accounts' array)
-        // Si es así, no es un backup de Aura Wallet, rechazarlo con un mensaje apropiado
+        // Si es así, no es un backup de esta app, rechazarlo con un mensaje apropiado
         if (parsed.encoded && Array.isArray(parsed.accounts) && parsed.encoding) {
           throw new Error('Este es un archivo de backup de Polkadot.js. Por favor, usa la opción "Importar Cuenta" > "Archivo JSON" para importarlo.')
         }

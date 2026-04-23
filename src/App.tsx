@@ -22,7 +22,8 @@ import { Wifi, WifiOff } from 'lucide-react'
 
 function App() {
   const [selectedChain, setSelectedChain] = useState<ChainInfo | null>(null)
-  const { client, isConnecting, error } = useDedotClient(selectedChain?.endpoint || null)
+  const substrateEndpoint = selectedChain?.evm ? null : selectedChain?.endpoint ?? null
+  const { client, isConnecting, error } = useDedotClient(substrateEndpoint)
 
   return (
     <div className="min-h-screen bg-background">

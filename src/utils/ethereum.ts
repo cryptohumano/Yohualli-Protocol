@@ -1,47 +1,48 @@
 /**
- * Utilidades para derivar direcciones Ethereum desde cuentas Substrate
- * 
- * Para derivar una dirección Ethereum desde una cuenta Substrate:
- * 1. Usar el mismo seed/mnemonic pero crear una cuenta ECDSA
- * 2. Obtener la clave pública ECDSA
- * 3. Aplicar keccak256 a la clave pública (sin el primer byte 0x04)
- * 4. Tomar los últimos 20 bytes como dirección Ethereum
+ * Dirección EVM (0x) alineada con carteras típicas (BIP39 + BIP44 m/44'/60'/0'/0/0)
+ * y con URIs de tipo Ethereum de Polkadot.js cuando no aplica frase estándar.
  */
 
 import { Keyring } from '@polkadot/keyring'
-import { keccakAsHex, keccakAsU8a } from '@polkadot/util-crypto'
-import { u8aToHex, hexToU8a } from '@polkadot/util'
+import { keyExtractSuri } from '@polkadot/util-crypto'
+import { mnemonicToAccount } from 'viem/accounts'
+import { toHex, type Hex } from 'viem'
 import type { KeyringPair } from '@polkadot/keyring/types'
 
+const BIP39_LENGTHS = new Set([12, 15, 18, 21, 24])
+
 /**
- * Deriva una dirección Ethereum desde un seed/mnemonic/URI de Substrate
- * @param seed - El seed, mnemonic o URI de Substrate (ej: "//Alice", mnemonic, etc.)
- * @returns La dirección Ethereum (0x...)
+ * Dirección 0x cuenta 0 (m/44'/60'/0'/0/0), misma convención que MetaMask / viem.
+ * Acepta SURI de Polkadot (frase + rutas ///contraseña).
+ */
+export function deriveBip44EthereumAddressFromSuri(suriOrMnemonic: string): string | null {
+  const trimmed = suriOrMnemonic.trim()
+  if (!trimmed) return null
+  try {
+    const { phrase, password } = keyExtractSuri(trimmed)
+    const words = phrase.normalize('NFC').split(/\s+/).filter(Boolean)
+    if (!BIP39_LENGTHS.has(words.length)) return null
+    const acc = password
+      ? mnemonicToAccount(phrase, { passphrase: password })
+      : mnemonicToAccount(phrase)
+    return acc.address
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Deriva una dirección EVM (0x) desde seed / mnemonic / SURI.
+ * Prioriza BIP44 (MetaMask); si no es una frase BIP39 reconocible, usa el keyring Ethereum de Polkadot.
  */
 export function deriveEthereumAddress(seed: string): string {
+  const bip44 = deriveBip44EthereumAddressFromSuri(seed)
+  if (bip44) return bip44
   try {
-    // Crear un keyring temporal para ECDSA
-    const keyring = new Keyring({ type: 'ecdsa' })
-    
-    // Crear el par desde el seed
-    const pair = keyring.addFromUri(seed)
-    
-    // Obtener la clave pública (65 bytes para ECDSA: 0x04 + 32 bytes X + 32 bytes Y)
-    const publicKey = pair.publicKey
-    
-    // Para Ethereum, necesitamos la clave pública sin el prefijo 0x04
-    // La clave pública ECDSA tiene formato: 0x04 + X (32 bytes) + Y (32 bytes)
-    // Ethereum usa solo X + Y (64 bytes total)
-    const publicKeyWithoutPrefix = publicKey.slice(1) // Remover el primer byte (0x04)
-    
-    // Aplicar keccak256
-    const hash = keccakAsU8a(publicKeyWithoutPrefix)
-    
-    // Tomar los últimos 20 bytes (40 caracteres hex)
-    const addressBytes = hash.slice(-20)
-    
-    // Convertir a dirección Ethereum con prefijo 0x
-    return u8aToHex(addressBytes)
+    const keyring = new Keyring({ type: 'ethereum', ss58Format: 42 })
+    const pair = keyring.addFromUri(seed.trim())
+    const addr = pair.address
+    return addr.startsWith('0x') ? addr : `0x${addr}`
   } catch (error) {
     console.error('Error al derivar dirección Ethereum:', error)
     throw new Error(`No se pudo derivar la dirección Ethereum: ${error instanceof Error ? error.message : String(error)}`)
@@ -49,35 +50,57 @@ export function deriveEthereumAddress(seed: string): string {
 }
 
 /**
- * Deriva una dirección Ethereum desde un KeyringPair existente
- * Nota: Esto requiere acceso al seed original, que no está disponible desde el pair
- * Por lo tanto, esta función intenta derivar desde el pair si es ECDSA,
- * o requiere que se pase el seed original
- * 
- * @param pair - El KeyringPair de Substrate
- * @param seed - (Opcional) El seed original si el pair no es ECDSA
- * @returns La dirección Ethereum (0x...)
+ * Dirección EVM (0x) coherente con BIP44 cuando conocemos la SURI; si el par ya es `ethereum`, usa su 0x.
+ * No usa el hash keccak de la pubkey Substrate ECDSA (eso no coincide con MetaMask).
  */
 export function deriveEthereumAddressFromPair(pair: KeyringPair, seed?: string): string | null {
   try {
-    // Si el pair ya es ECDSA, podemos derivar directamente
-    if (pair.type === 'ecdsa') {
-      const publicKey = pair.publicKey
-      const publicKeyWithoutPrefix = publicKey.slice(1)
-      const hash = keccakAsU8a(publicKeyWithoutPrefix)
-      const addressBytes = hash.slice(-20)
-      return u8aToHex(addressBytes)
+    if (pair.type === 'ethereum') {
+      const addr = pair.address
+      return addr.startsWith('0x') ? addr : `0x${addr}`
     }
-    
-    // Si no es ECDSA y tenemos el seed, derivar desde el seed
     if (seed) {
+      const bip44 = deriveBip44EthereumAddressFromSuri(seed)
+      if (bip44) return bip44
       return deriveEthereumAddress(seed)
     }
-    
-    // No podemos derivar sin el seed original
     return null
   } catch (error) {
     console.error('Error al derivar dirección Ethereum desde pair:', error)
+    return null
+  }
+}
+
+const SECP_32_HEX = /^(0x)?[0-9a-fA-F]{64}$/
+
+/**
+ * Clave privada secp256k1 en hex `0x` + 64 carácteres, misma derivación BIP44 que
+ * {@link deriveBip44EthereumAddressFromSuri} (MetaMask, **m/44'/60'/0'/0/0**).
+ * Sirve para `PRIVATE_KEY` de Hardhat / `cast send` en Polkadot Hub PVM-EVM.
+ *
+ * - Frase BIP39 + SURI: usa solo la frase (y `///` password si aplica), **no** las
+ *   rutas Substrate (`//yohualli`, etc.).
+ * - `0x` + 32 bytes: devuelve la misma clave normalizada a `0x` minúscula.
+ * - JSON Polkadot o cuentas sin material BIP39: devuelve `null`.
+ */
+export function evmBip44PrivateKey0xFromSuri(suriOrKey: string): Hex | null {
+  const t = suriOrKey.trim()
+  if (!t) return null
+  if (SECP_32_HEX.test(t)) {
+    const h = t.startsWith('0x') || t.startsWith('0X') ? t.slice(2) : t
+    return `0x${h.toLowerCase()}` as Hex
+  }
+  try {
+    const { phrase, password } = keyExtractSuri(t)
+    const words = phrase.normalize('NFC').split(/\s+/).filter(Boolean)
+    if (!BIP39_LENGTHS.has(words.length)) return null
+    const acc = password
+      ? mnemonicToAccount(phrase, { passphrase: password })
+      : mnemonicToAccount(phrase)
+    const key = acc.getHdKey().privateKey
+    if (key == null) return null
+    return toHex(key)
+  } catch {
     return null
   }
 }

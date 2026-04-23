@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { DEFAULT_CHAINS, type ChainInfo } from '@/hooks/useDedotClient'
+import { NETWORK_OPTIONS, type ChainInfo } from '@/hooks/useDedotClient'
 import {
   Select,
   SelectContent,
@@ -29,25 +29,40 @@ export function NetworkSwitcher({ selectedChain, onSelectChain, isConnecting }: 
       <Select
         value={selectedChain?.endpoint || ''}
         onValueChange={(endpoint) => {
-          const chain = DEFAULT_CHAINS.find(c => c.endpoint === endpoint)
+          const chain = NETWORK_OPTIONS.find((c) => c.endpoint === endpoint)
           if (chain) {
             onSelectChain(chain)
           }
         }}
         disabled={isConnecting}
       >
-        <SelectTrigger className="w-[200px]">
+        <SelectTrigger className="w-[min(100vw-8rem,280px)] max-w-[280px]">
           <SelectValue placeholder="Seleccionar red">
             {selectedChain ? selectedChain.name : 'Seleccionar red'}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
-          {DEFAULT_CHAINS.map((chain) => (
-            <SelectItem key={chain.endpoint} value={chain.endpoint}>
-              <div className="flex items-center justify-between w-full">
-                <span>{chain.name}</span>
-                {selectedChain?.endpoint === chain.endpoint && (
-                  <Badge variant="secondary" className="ml-2">Activa</Badge>
+          {NETWORK_OPTIONS.map((chain) => (
+            <SelectItem key={chain.endpoint} value={chain.endpoint} className="py-2">
+              <div className="flex flex-col gap-1 text-left max-w-[min(85vw,320px)]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium leading-tight">{chain.name}</span>
+                  {selectedChain?.endpoint === chain.endpoint && (
+                    <Badge variant="secondary" className="shrink-0 text-[10px]">
+                      Activa
+                    </Badge>
+                  )}
+                </div>
+                {chain.evm ? (
+                  <span className="text-[10px] text-muted-foreground font-mono leading-snug break-all">
+                    chain ID {chain.evm.chainId} · {chain.evm.rpcHttp}
+                  </span>
+                ) : (
+                  chain.description && (
+                    <span className="text-[10px] text-muted-foreground line-clamp-2">
+                      {chain.description}
+                    </span>
+                  )
                 )}
               </div>
             </SelectItem>

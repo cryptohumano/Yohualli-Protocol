@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Search, Bell, LogOut } from 'lucide-react'
 import { NetworkSwitcher } from '@/components/NetworkSwitcher'
+import { AccountSwitcher } from '@/components/layout/AccountSwitcher'
 import { useContext } from 'react'
 import { NetworkContext } from '@/contexts/NetworkContext'
 import { KeyringContext } from '@/contexts/KeyringContext'
@@ -45,7 +46,7 @@ export function Header() {
         <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4 max-w-full overflow-hidden">
           <div className="flex items-center justify-between gap-2 min-w-0">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-              <h1 className="text-lg sm:text-xl font-bold truncate">Aura Wallet</h1>
+              <h1 className="text-lg sm:text-xl font-bold truncate">Yohualli Protocol</h1>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               <LogoutButton />
@@ -69,7 +70,10 @@ export function Header() {
       <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4 max-w-full overflow-hidden">
         <div className="flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-            <h1 className="text-lg sm:text-xl font-bold truncate">Aura Wallet</h1>
+            <h1 className="text-lg sm:text-xl font-bold shrink-0">Yohualli Protocol</h1>
+            <div className="min-w-0 max-w-[14rem] flex-1 sm:max-w-md">
+              <AccountSwitcher />
+            </div>
             <div className="hidden sm:block flex-shrink-0">
               <NetworkSwitcher
                 selectedChain={selectedChain}

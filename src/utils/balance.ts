@@ -8,6 +8,9 @@ import type { ChainInfo } from '@/hooks/useDedotClient'
 
 // Configuración de decimales por cadena (por defecto 10 para Polkadot/Kusama)
 const CHAIN_DECIMALS: Record<string, number> = {
+  'polkadot hub testnet': 18,
+  'paseo evm': 18,
+  'evm:polkadot-hub-testnet': 18,
   'polkadot': 10,
   'kusama': 12,
   'paseo': 10,
@@ -30,6 +33,9 @@ const CHAIN_DECIMALS: Record<string, number> = {
 
 // Símbolos por cadena
 const CHAIN_SYMBOLS: Record<string, string> = {
+  'polkadot hub testnet': 'PAS',
+  'paseo evm': 'PAS',
+  'evm:polkadot-hub-testnet': 'PAS',
   'polkadot': 'DOT',
   'kusama': 'KSM',
   'paseo': 'PASE',

@@ -1,4 +1,4 @@
-import { DEFAULT_CHAINS, type ChainInfo } from '@/hooks/useDedotClient'
+import { NETWORK_OPTIONS, type ChainInfo } from '@/hooks/useDedotClient'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -15,12 +15,12 @@ export function ChainSelector({ selectedChain, onSelectChain, isConnecting }: Ch
       <CardHeader>
         <CardTitle>Seleccionar Red</CardTitle>
         <CardDescription>
-          Elige una red de Polkadot para explorar
+          Elegí una red Substrate (WebSocket) o la capa EVM de Polkadot Hub (HTTP JSON-RPC).
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {DEFAULT_CHAINS.map((chain) => (
+          {NETWORK_OPTIONS.map((chain) => (
             <Button
               key={chain.endpoint}
               variant={selectedChain?.endpoint === chain.endpoint ? "default" : "outline"}
@@ -34,10 +34,16 @@ export function ChainSelector({ selectedChain, onSelectChain, isConnecting }: Ch
                   <Badge variant="secondary">Conectado</Badge>
                 )}
               </div>
-              {chain.description && (
-                <span className="text-xs text-muted-foreground mt-1 text-left">
-                  {chain.description}
+              {chain.evm ? (
+                <span className="text-xs text-muted-foreground mt-1 text-left font-mono break-all">
+                  chain ID {chain.evm.chainId} · {chain.evm.rpcHttp}
                 </span>
+              ) : (
+                chain.description && (
+                  <span className="text-xs text-muted-foreground mt-1 text-left">
+                    {chain.description}
+                  </span>
+                )
               )}
             </Button>
           ))}

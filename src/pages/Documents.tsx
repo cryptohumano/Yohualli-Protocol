@@ -35,7 +35,7 @@ import { Label } from '@/components/ui/label'
 import Identicon from '@polkadot/react-identicon'
 
 export default function Documents() {
-  const { accounts } = useKeyringContext()
+  const { accounts, activeAccountAddress } = useKeyringContext()
   const navigate = useNavigate()
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,11 +50,10 @@ export default function Documents() {
   }, [filterType])
 
   useEffect(() => {
-    // Establecer la primera cuenta como predeterminada
-    if (accounts.length > 0 && !selectedAccount) {
-      setSelectedAccount(accounts[0].address)
+    if (activeAccountAddress) {
+      setSelectedAccount(activeAccountAddress)
     }
-  }, [accounts, selectedAccount])
+  }, [activeAccountAddress])
 
   const loadDocuments = async () => {
     try {
@@ -108,8 +107,8 @@ export default function Documents() {
           subject: 'Prueba',
           keywords: ['test', 'prueba'],
           language: 'es',
-          creator: 'Aura Wallet',
-          producer: 'Aura Wallet PDF Generator',
+          creator: 'Yohualli Protocol',
+          producer: 'Yohualli Protocol — generador PDF',
           createdAt: new Date().toISOString(),
         },
         pdfContent: {
@@ -118,7 +117,7 @@ export default function Documents() {
           sections: [
             {
               title: 'Información',
-              content: 'Este es un documento PDF de prueba generado por Aura Wallet. El sistema de documentos está funcionando correctamente.',
+              content: 'Este es un documento PDF de prueba generado por Yohualli Protocol. El sistema de documentos está funcionando correctamente.',
             },
             {
               title: 'Detalles del Autor',
@@ -141,7 +140,7 @@ export default function Documents() {
               isTable: true,
             },
           ],
-          footer: `Generado el ${new Date().toLocaleDateString('es-ES')} por ${authorName} usando Aura Wallet`,
+          footer: `Generado el ${new Date().toLocaleDateString('es-ES')} por ${authorName} usando Yohualli Protocol`,
         },
         relatedAccount: selectedAccount,
       })

@@ -6,12 +6,12 @@ import { useKeyringContext } from '@/contexts/KeyringContext'
 import { useState, useEffect } from 'react'
 import Identicon from '@polkadot/react-identicon'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { useCurrentChainBalance } from '@/hooks/useMultiChainBalances'
 import { useNetwork } from '@/contexts/NetworkContext'
 import { formatBalanceForDisplay, getChainSymbol } from '@/utils/balance'
 import { getAllTransactions, type StoredTransaction } from '@/utils/transactionStorage'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale/es'
+import { EvmPasBalanceCard } from '@/components/EvmPasBalanceCard'
 
 export default function Home() {
   const { accounts } = useKeyringContext()
@@ -22,10 +22,13 @@ export default function Home() {
   const [recentTransactions, setRecentTransactions] = useState<StoredTransaction[]>([])
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false)
 
-  // Calcular balance total de todas las cuentas
+  const isEvmNetwork = Boolean(selectedChain?.evm)
+
+  // Calcular balance total de todas las cuentas (solo capa Substrate)
   useEffect(() => {
-    if (accounts.length === 0 || !selectedChain) {
+    if (accounts.length === 0 || !selectedChain || isEvmNetwork) {
       setTotalBalance(BigInt(0))
+      if (isEvmNetwork) setIsLoadingBalance(false)
       return
     }
 
@@ -63,7 +66,7 @@ export default function Home() {
     }
 
     fetchBalances()
-  }, [accounts, selectedChain])
+  }, [accounts, selectedChain, isEvmNetwork])
 
   // Cargar transacciones recientes
   useEffect(() => {
@@ -110,42 +113,52 @@ export default function Home() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Aura Wallet</h1>
+        <h1 className="text-3xl font-bold">Yohualli Protocol</h1>
         <p className="text-muted-foreground mt-2">
           Tu wallet criptográfica con capacidades avanzadas
         </p>
       </div>
 
-      {/* Balance Total */}
+      {/* Balance Total (Substrate) */}
       <Card>
         <CardHeader>
-          <CardTitle>Balance Total</CardTitle>
-          <CardDescription>Suma de todas tus cuentas activas</CardDescription>
+          <CardTitle>Balance total (Substrate)</CardTitle>
+          <CardDescription>
+            Suma de tus cuentas del keyring en la red Substrate elegida en el selector
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoadingBalance ? (
+          {isEvmNetwork ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Tenés seleccionada la red <strong>Polkadot Hub Testnet (EVM)</strong>: aquí no aplica el
+                saldo Substrate. El PAS nativo de esa red está en la tarjeta de abajo (MetaMask / capa
+                Ethereum).
+              </p>
+            </div>
+          ) : isLoadingBalance ? (
             <div className="flex items-center gap-2">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="text-muted-foreground">Cargando balance...</span>
+              <span className="text-muted-foreground">Cargando saldo…</span>
             </div>
           ) : (
             <>
               <div className="text-4xl font-bold">
-                {selectedChain 
+                {selectedChain
                   ? formatBalanceForDisplay(totalBalance, selectedChain.name)
-                  : '0.00 DOT'
-                }
+                  : '0.00 DOT'}
               </div>
               <p className="text-sm text-muted-foreground mt-2">
-                {selectedChain 
+                {selectedChain
                   ? `En ${selectedChain.name}`
-                  : 'Selecciona una red para ver el balance'
-                }
+                  : 'Elegí una red para ver el saldo'}
               </p>
             </>
           )}
         </CardContent>
       </Card>
+
+      <EvmPasBalanceCard />
 
       {/* Acciones Rápidas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

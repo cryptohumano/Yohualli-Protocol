@@ -33,6 +33,7 @@ export interface EncryptedAccount {
 
 // Usar el módulo compartido para evitar conflictos
 import { openSharedDB } from './indexedDB'
+import { decrypt } from './encryption'
 
 async function openDB(): Promise<IDBDatabase> {
   console.log('[IndexedDB] Abriendo base de datos compartida...')
@@ -119,6 +120,21 @@ export async function getAllEncryptedAccounts(): Promise<EncryptedAccount[]> {
       reject(request.error)
     }
   })
+}
+
+/**
+ * Comprueba que `password` sea la de cifrado de las cuentas ya en IndexedDB
+ * (misma clave en toda la billetera). Si no hay cuentas guardadas, acepta cualquiera.
+ */
+export async function verifyWalletStoragePassword(password: string): Promise<boolean> {
+  const accs = await getAllEncryptedAccounts()
+  if (accs.length === 0) return true
+  try {
+    await decrypt(accs[0].encryptedData, password)
+    return true
+  } catch {
+    return false
+  }
 }
 
 export async function deleteEncryptedAccount(address: string): Promise<void> {

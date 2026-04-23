@@ -53,11 +53,11 @@ export async function generatePDF(options: PDFGenerationOptions): Promise<{
   // Configurar metadata del PDF (esto se incluye en las propiedades del PDF)
   pdf.setProperties({
     title: metadata.title || 'Documento',
-    author: metadata.author || 'Aura Wallet', // Este autor aparecerá en las propiedades del PDF
+    author: metadata.author || 'Yohualli Protocol', // Este autor aparecerá en las propiedades del PDF
     subject: metadata.subject || '',
     keywords: metadata.keywords?.join(', ') || '',
-    creator: metadata.creator || 'Aura Wallet',
-    producer: metadata.producer || 'Aura Wallet PDF Generator',
+    creator: metadata.creator || 'Yohualli Protocol',
+    producer: metadata.producer || 'Yohualli Protocol PDF Generator',
   })
 
   // Inyectar metadata GPS si está disponible
@@ -199,8 +199,8 @@ export async function generateSimplePDF(
       subject: metadata?.subject || '',
       keywords: metadata?.keywords || [],
       language: metadata?.language || 'es',
-      creator: 'Aura Wallet',
-      producer: 'Aura Wallet PDF Generator',
+      creator: 'Yohualli Protocol',
+      producer: 'Yohualli Protocol PDF Generator',
       createdAt: new Date().toISOString(),
     },
     content: {
@@ -242,8 +242,8 @@ export async function generateContractPDF(
       subject: 'Contrato',
       keywords: ['contrato', 'legal', ...(metadata?.keywords || [])],
       language: metadata?.language || 'es',
-      creator: 'Aura Wallet',
-      producer: 'Aura Wallet PDF Generator',
+      creator: 'Yohualli Protocol',
+      producer: 'Yohualli Protocol PDF Generator',
       createdAt: new Date().toISOString(),
     },
     content: {
@@ -259,7 +259,7 @@ export async function generateContractPDF(
           content: termsContent,
         },
       ],
-      footer: `Generado el ${new Date().toLocaleDateString('es-ES')} por Aura Wallet`,
+      footer: `Generado el ${new Date().toLocaleDateString('es-ES')} por Yohualli Protocol`,
     },
   })
 }

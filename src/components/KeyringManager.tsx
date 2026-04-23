@@ -4,23 +4,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Key, Plus, Trash2, Copy, Check, ExternalLink } from 'lucide-react'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Key, Plus, Trash2, Copy, Check, ExternalLink, KeyRound } from 'lucide-react'
 import type { KeyringAccount } from '@/hooks/useKeyring'
 import Identicon from '@polkadot/react-identicon'
 import { deriveEthereumAddressFromPair } from '@/utils/ethereum'
-
-type CryptoType = 'sr25519' | 'ed25519' | 'ecdsa'
+import { DualSubstrateAddressLines } from '@/components/DualSubstrateAddressLines'
+import { ensureYohualliSubstrateSuri, YOHUALLI_SUBSTRATE_DERIVATION } from '@/social-graph/yohualliSubstratePath'
+import { AccountSecretsDialog } from '@/components/AccountSecretsDialog'
 
 export function KeyringManager() {
-  const { keyring, isReady, accounts, isUnlocked, generateMnemonic, addFromMnemonic, addFromUri, removeAccount } = useKeyringContext()
+  const { keyring, isReady, accounts, isUnlocked, generateMnemonic, addFromUri, removeAccount } = useKeyringContext()
   const [mnemonic, setMnemonic] = useState('')
   const [uri, setUri] = useState('')
   const [accountName, setAccountName] = useState('')
   const [showMnemonic, setShowMnemonic] = useState(false)
   const [generatedMnemonic, setGeneratedMnemonic] = useState('')
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null)
-  const [cryptoType, setCryptoType] = useState<CryptoType>('sr25519')
   const [ethereumAddresses, setEthereumAddresses] = useState<Record<string, string | null>>({})
+  const [secretsDialogFor, setSecretsDialogFor] = useState<string | null>(null)
+  /** Si es true, se aplica `//yohualli` a BIP39/SURI al importar (recomendado en esta PWA). */
+  const [applyYohualliOnImport, setApplyYohualliOnImport] = useState(true)
+
+  const buildImportSuri = (raw: string) => {
+    const t = raw.trim()
+    if (!t) return t
+    return applyYohualliOnImport ? ensureYohualliSubstrateSuri(t) : t
+  }
 
   const handleGenerateMnemonic = () => {
     const newMnemonic = generateMnemonic()
@@ -39,7 +50,8 @@ export function KeyringManager() {
       return
     }
     
-    await addFromMnemonic(mnemonic.trim(), accountName || undefined, cryptoType, password || undefined)
+    const suri = buildImportSuri(mnemonic)
+    await addFromUri(suri, accountName || undefined, 'sr25519', password || undefined)
     setMnemonic('')
     setAccountName('')
     setPassword('')
@@ -54,7 +66,8 @@ export function KeyringManager() {
     }
     
     const name = accountName.trim() || undefined
-    await addFromUri(uri.trim(), name, cryptoType, password || undefined)
+    const suri = buildImportSuri(uri)
+    await addFromUri(suri, name, 'sr25519', password || undefined)
     setUri('')
     if (name) setAccountName('')
     setPassword('')
@@ -76,7 +89,8 @@ export function KeyringManager() {
       try {
         const pair = keyring.getPair(account.address)
         // Intentar derivar desde el pair (funciona si es ECDSA)
-        const ethAddress = deriveEthereumAddressFromPair(pair)
+        const ethAddress =
+          account.evmBip44Address ?? deriveEthereumAddressFromPair(pair)
         derived[account.address] = ethAddress
       } catch (error) {
         console.debug(`No se pudo derivar dirección Ethereum para ${account.address}:`, error)
@@ -149,44 +163,34 @@ export function KeyringManager() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Selector de Tipo de Criptografía */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Tipo de Criptografía</label>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant={cryptoType === 'sr25519' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setCryptoType('sr25519')}
-                className="flex-1"
-              >
-                sr25519
-              </Button>
-              <Button
-                type="button"
-                variant={cryptoType === 'ed25519' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setCryptoType('ed25519')}
-                className="flex-1"
-              >
-                ed25519
-              </Button>
-              <Button
-                type="button"
-                variant={cryptoType === 'ecdsa' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setCryptoType('ecdsa')}
-                className="flex-1"
-              >
-                ecdsa
-              </Button>
+          <p className="text-xs text-muted-foreground rounded-md border border-dashed px-3 py-2">
+            <strong>Yohualli (grafo / relay):</strong> las frases BIP39 y SURI se importan bajo la ruta Substrate
+            fija <code className="text-[11px]">{YOHUALLI_SUBSTRATE_DERIVATION}</code> (si aún no indicás otra
+            derivación en la URI). Así el SS58 transmitido coincide con la identidad de protocolo. Cuentas con
+            frase o URI se guardan como <strong>sr25519</strong>; EVM (BIP44) y ed25519/ecdsa duales se siguen
+            mostrando cuando hay material de derivación local. Las distintas ramas BIP44 (MetaMask, atestación
+            Yohualli) no se eligen al importar: la PWA aplica en cada acción la ruta correcta sobre la misma
+            frase; ver pestaña <strong>Rutas</strong> al revelar claves.
+          </p>
+          {isUnlocked && (
+            <div className="flex items-start gap-3 rounded-md border bg-muted/30 p-3">
+              <Checkbox
+                id="yohualli-path"
+                checked={applyYohualliOnImport}
+                onCheckedChange={(v) => setApplyYohualliOnImport(v === true)}
+              />
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <Label htmlFor="yohualli-path" className="text-sm text-foreground cursor-pointer font-medium">
+                  Identidad Yohualli (Substrate)
+                </Label>
+                <p>
+                  Activo: añade o respeta <code className="text-[11px]">{YOHUALLI_SUBSTRATE_DERIVATION}</code> a la
+                  SURI, para alinear el SS58 con el grafo y el relay. Desactivalo si importás un SURI/seed para
+                  pruebas o rutas 100% personalizadas.
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {cryptoType === 'sr25519' && 'Schnorrkel - Recomendado para Substrate'}
-              {cryptoType === 'ed25519' && 'Edwards - Alternativa común'}
-              {cryptoType === 'ecdsa' && 'ECDSA - Compatible con Ethereum (Moonbeam, etc.)'}
-            </p>
-          </div>
+          )}
 
           {/* Generar Mnemonic */}
           <div className="space-y-2">
@@ -219,7 +223,8 @@ export function KeyringManager() {
                     setMnemonic(generatedMnemonic)
                     setShowMnemonic(false)
                     // Crear la cuenta automáticamente
-                    await addFromMnemonic(generatedMnemonic, accountName.trim() || undefined, cryptoType, password || undefined)
+                    const suri = buildImportSuri(generatedMnemonic)
+                    await addFromUri(suri, accountName.trim() || undefined, 'sr25519', password || undefined)
                     setMnemonic('')
                     setAccountName('')
                     setGeneratedMnemonic('')
@@ -237,7 +242,11 @@ export function KeyringManager() {
           {/* Agregar desde Mnemonic */}
           <div className="space-y-2">
             <Input
-              placeholder="Mnemonic (12, 15, 18, 21 o 24 palabras)"
+              placeholder={
+                applyYohualliOnImport
+                  ? 'BIP39: con identidad Yohualli, se añade //yohualli a la SURI (salvo otra ruta tuya).'
+                  : 'BIP39 / SURI: no se añade //yohualli (ruta exacta tuya).'
+              }
               value={mnemonic}
               onChange={(e) => setMnemonic(e.target.value)}
               disabled={!isUnlocked}
@@ -273,7 +282,11 @@ export function KeyringManager() {
           {/* Agregar desde URI (Substrate URI) */}
           <div className="space-y-2">
             <Input
-              placeholder="Substrate URI (ej: //Alice, //Bob, o mnemonic con derivación)"
+              placeholder={
+                applyYohualliOnImport
+                  ? 'SURI: BIP39, 0x…, //Alice… (Yohualli: se ajusta SURI a //yohualli si aplica).'
+                  : 'SURI exacta, sin añadir //yohualli (avanzado).'
+              }
               value={uri}
               onChange={(e) => setUri(e.target.value)}
               disabled={!isUnlocked}
@@ -336,50 +349,57 @@ export function KeyringManager() {
                         {account.meta.name || 'Sin nombre'}
                       </p>
                     </div>
-                    <p className="text-sm font-mono break-all text-muted-foreground">
-                      {account.address}
-                    </p>
-                    {ethereumAddresses[account.address] && (
-                      <div className="mt-1">
-                        <p className="text-xs text-muted-foreground mb-1">Dirección Ethereum:</p>
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-mono break-all text-blue-600 dark:text-blue-400">
-                            {ethereumAddresses[account.address]}
-                          </p>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0"
-                            onClick={() => {
-                              if (ethereumAddresses[account.address]) {
-                                handleCopyAddress(ethereumAddresses[account.address]!)
-                                setCopiedAddress(`eth-${account.address}`)
-                                setTimeout(() => setCopiedAddress(null), 2000)
-                              }
-                            }}
-                          >
-                            {copiedAddress === `eth-${account.address}` ? (
-                              <Check className="h-3 w-3" />
-                            ) : (
-                              <Copy className="h-3 w-3" />
-                            )}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0"
-                            onClick={() => {
-                              if (ethereumAddresses[account.address]) {
-                                window.open(`https://etherscan.io/address/${ethereumAddresses[account.address]}`, '_blank')
-                              }
-                            }}
-                            title="Ver en Etherscan"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                    {(() => {
+                      const ethResolved =
+                        account.evmBip44Address ?? ethereumAddresses[account.address] ?? null
+                      if (account.dualSubstrateSs58) {
+                        return (
+                          <DualSubstrateAddressLines
+                            dual={account.dualSubstrateSs58}
+                            evmAddress={ethResolved}
+                            className="mt-1"
+                          />
+                        )
+                      }
+                      return (
+                        <>
+                          <p className="text-sm font-mono break-all text-muted-foreground">{account.address}</p>
+                          {ethResolved ? (
+                            <div className="mt-2 space-y-1">
+                              <p className="text-[11px] text-muted-foreground">Dirección EVM (si aplica):</p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <code className="text-xs font-mono break-all">{ethResolved}</code>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0"
+                                  type="button"
+                                  onClick={() => handleCopyAddress(ethResolved)}
+                                >
+                                  {copiedAddress === ethResolved ? (
+                                    <Check className="h-3 w-3" />
+                                  ) : (
+                                    <Copy className="h-3 w-3" />
+                                  )}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0"
+                                  type="button"
+                                  onClick={() =>
+                                    window.open(`https://etherscan.io/address/${ethResolved}`, '_blank')
+                                  }
+                                  title="Ver en Etherscan"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          ) : null}
+                        </>
+                      )
+                    })()}
                     <div className="flex gap-2 mt-2">
                       <Badge variant="outline" className="text-xs">
                         {keyring?.getPair(account.address).type || 'sr25519'}
@@ -387,14 +407,25 @@ export function KeyringManager() {
                       <Badge variant="secondary" className="text-xs">
                         {account.publicKey.length * 8} bits
                       </Badge>
-                      {ethereumAddresses[account.address] && (
+                      {(account.evmBip44Address ?? ethereumAddresses[account.address]) && (
                         <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
-                          Ethereum
+                          EVM
                         </Badge>
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-2 ml-4">
+                  <div className="flex flex-wrap gap-2 ml-4 justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-8"
+                      type="button"
+                      title="Mnemónico, SURI, PRIVATE_KEY, rutas; se bloquea al salir o minimizar"
+                      onClick={() => setSecretsDialogFor(account.address)}
+                    >
+                      <KeyRound className="h-3 w-3 mr-1" />
+                      Claves y frase
+                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
@@ -419,6 +450,22 @@ export function KeyringManager() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {secretsDialogFor && (
+        <AccountSecretsDialog
+          open
+          onOpenChange={(o) => {
+            if (!o) setSecretsDialogFor(null)
+          }}
+          address={secretsDialogFor}
+          accountName={accounts.find((a) => a.address === secretsDialogFor)?.meta.name || 'Sin nombre'}
+          evmBip44Address={
+            accounts.find((a) => a.address === secretsDialogFor)?.evmBip44Address ??
+            ethereumAddresses[secretsDialogFor] ??
+            null
+          }
+        />
       )}
     </div>
   )

@@ -1,177 +1,95 @@
-# Aura Wallet
+# Yohualli Protocol
 
-Una Progressive Web App (PWA) moderna y segura para gestionar cuentas criptográficas en redes basadas en Substrate/Polkadot, con capacidades avanzadas de seguridad, privacidad y gestión de identidad.
+**Yohualli** nace con la intención de ofrecer **pruebas de “personalidad digital”** a comunidades que, por su naturaleza, necesitan **preservar el anonimato** en su participación activa en dinámicas **sociales, económicas o de gobernanza**: la **confianza p2p verificable** sin revelar topología de grafo, conexiones ni datos personales en la cadena.
 
-## 🚀 Características Principales
+En el **borrador normativo** ([`docs/Yohualli Protocol draft 1.1.md`](docs/Yohualli%20Protocol%20draft%201.1.md)) se plantea un modelo de tres capas: **PWA soberana** (claves, confianza local, ZK y almacenamiento cifrado), **red P2P** (atestaciones, *relayers*, *gossip*) y **asentamiento on-chain** (compromisos, verificación de pruebas, raíces Merkle, nullifiers). **La cadena no almacena el grafo**; arbitra la validez matemática de las pruebas.
 
-### 🔐 Seguridad y Autenticación
-- **WebAuthn** - Autenticación biométrica y con hardware keys (Windows Hello, Touch ID, YubiKey)
-- **Encriptación AES-GCM-256** - Protección de claves privadas con contraseña
-- **Keyring no custodial** - Tus claves privadas nunca salen de tu dispositivo
-- **Firma digital** - Soporte para sr25519, ed25519 y ecdsa
+> **Fase 0 (este repositorio):** validación de **viabilidad técnica** hacia un **MVP**. Se ha comprobado la generación de **provers/artefactos** en dispositivos reales (incl. **PWA en iOS y Android** con pruebas de circuito), el uso de **P2P** en el flujo de atestación/gossip, y el encaje con **verificación EVM** y experimentación **PVM**.  
+> **Meta inmediata:** cristalizar un **MVP** acompañado de un **whitepaper** o un **estudio de viabilidad** basado en los aprendizajes iterativos. El borrador 1.1 contiene fórmulas y suposiciones que deben **revisarse y congelarse** en una versión normativa; esta fase ha servido justamente a **fijar** qué es técnicamente alcanzable y qué queda en el laboratorio *vs* producción.
 
-### 💼 Gestión de Cuentas
-- **Múltiples cuentas** - Gestiona múltiples cuentas desde un solo wallet
-- **Importación flexible** - Importa cuentas desde mnemonic, URI o archivos JSON
-- **Backup completo** - Exporta e importa todos tus datos (cuentas, contactos, configuraciones)
-- **Identicons** - Visualización de cuentas con Polkadot Identicons
+**Licencia:** [LICENSE](LICENSE) (MIT, alineada con el remoto del proyecto). Documentación adicional de protocolo, circuitos y UX está en [`docs/`](docs/).
 
-### 🌐 Multi-Cadena
-- **Soporte multi-cadena** - Conecta a múltiples redes Substrate simultáneamente
-- **Redes preconfiguradas** - Polkadot, Kusama, Paseo y sus parachains
-- **Balance multi-cadena** - Consulta balances en todas tus cuentas conectadas
-- **People Chain Integration** - Consulta identidades on-chain desde People Chain
+---
 
-### 📱 Experiencia de Usuario
-- **Mobile-first** - Diseño optimizado para dispositivos móviles
-- **Offline-first** - Funciona completamente sin conexión
-- **Instalable** - Instala como app nativa en tu dispositivo
-- **UI intuitiva** - Menos de 3 clicks para cualquier acción
+## Trabajo en laboratorio (ZK Lab) *vs* despliegue en producción
 
-### 🔒 Privacidad e Identidad
-- **Página de Identidad** - Gestiona tu identidad on-chain y privacidad
-- **Contactos** - Guarda direcciones de contactos frecuentes
-- **Configuración de APIs** - Conecta con servicios externos de atestación
+En fase 0, **iOS y Android** ya demuestran que se puede **generar pruebas en la PWA** en condiciones reales. Eso **no** implica que todo usuario deba *bring your own infrastructure* *solo* para *poder* prover: *BYOI* (máquina de dev, CI, nodo o servicio *helper*) cumple otras funciones: **cierre** documental del *pipeline* (*nargo* / *bb*), **redundancia** o **respaldo** (móviles de gama baja, lotes, *benchmarks* en servidores) y **automatización** (CI) cuando el *SLA* “toda gama, en pocos minutos, para un circuito pesado” aún no cierra. Ver [YOHUALLI_POC_PWA_PROVER_DILEMMA.md](docs/YOHUALLI_POC_PWA_PROVER_DILEMMA.md) y [CIRCUITS_LAB.md](docs/CIRCUITS_LAB.md).  
+**En resumen:** *ZK Lab* es el laboratorio con **pasos manuales**; en producción conviven **PWA** como primera opción *soberana* mientras el *prove* en cliente *sea aceptable*, y cadenas repetibles en entornos *server-side* o integradores. Detalle de *roles* cripto: [YOHUALLI_EVM_CONTRACTS_ARCHITECTURE.md](docs/YOHUALLI_EVM_CONTRACTS_ARCHITECTURE.md).
 
-## 📦 Instalación
+### Flujos de roles (vista de PoC; diagrama completo en el doc de UX)
 
-Este proyecto usa **Yarn** como gestor de paquetes. Asegúrate de tener Yarn instalado:
+> Diagrama detallado: [YOHUALLI_FLUJOS_UX_ACTORES.md](docs/YOHUALLI_FLUJOS_UX_ACTORES.md) · Producto resumido: [YOHUALLI_FLUJO_PRODUCTO_CORTA.md](docs/YOHUALLI_FLUJO_PRODUCTO_CORTA.md)
 
-```bash
-# Instalar Yarn globalmente (si no lo tienes)
-npm install -g yarn
-
-# Instalar dependencias
-yarn install
+```mermaid
+flowchart TD
+  subgraph pwa["PWA"]
+    S[Sujeto SS58 / atestado]
+    A[Atestador EIP-712 + grafo / P2P]
+  end
+  S --> A
+  A -->|no automático| M[Merkle on-chain]
+  O[Operador: batch + setMerkleRoot] --> M
+  ZK[ZK Lab: verify / muestras] --> V[HonkVerifier / registro EVM o PVM]
+  M --> V
 ```
 
-## 🛠️ Desarrollo
+- **Atestar ≠** publicar `merkleRoot` en un *epoch*; el operador consolida *off-chain* y ancla *on-chain* (scripts Foundry, ver [`evm/yohualli_honk_verifier`](evm/yohualli_honk_verifier) y *README* alojado ahí).
+- [YOHUALLI_ACERCAMIENTO_WHITEPAPER.md](docs/YOHUALLI_ACERCAMIENTO_WHITEPAPER.md) ordena fases hacia *whitepaper* y circuitos congelados.
 
-```bash
-# Iniciar servidor de desarrollo
-yarn dev
+---
 
-# El servidor estará disponible en:
-# - Local: http://localhost:5173/
-# - Red: http://[tu-ip]:5173/
-```
+## Hallazgos técnicos desde la concepción (borrador 1.1 → código)
 
-## 🏗️ Build
+- **Higiene criptográfica y capas**  
+  Identificadores **Substrate (SS58)** encajan con **etiquetas estables** en *gossip* / *relayers* y construcción de **grafo** *off-chain*; lo que el contrato *Honk* debe ver entra alineado con **ECDSA `secp256k1`** (EIP-712, *payload* v0). Tabla y convención en [YOHUALLI_EVM_CONTRACTS_ARCHITECTURE.md](docs/YOHUALLI_EVM_CONTRACTS_ARCHITECTURE.md). El borrador 1.1 fija *curva* y *derivación*; la fase 0 aterriza **paths BIP44**, “quién paga *gas*” *vs* “qué clave atestó”, y **no** mezclar filas en tablas de identidad.
+- **Privacidad y Noir**  
+  Compromisos, Merkle, `nullifier` y gadgets acordes al diseño (incl. `yohualli_*` bajo `circuits/`, lab de integración y Merkle *v0/v1* documentados en [YOHUALLI_MERKLE_PROOF_V0.md](docs/YOHUALLI_MERKLE_PROOF_V0.md), [CIRCUITS_LAB.md](docs/CIRCUITS_LAB.md), [YOHUALLI_CIRCUIT_MERKLE_INCLUSION_V2.md](docs/YOHUALLI_CIRCUIT_MERKLE_INCLUSION_V2.md).
+- **EVM + Foundry (REVM en *test*)**  
+  *Tests*, verificador `Honk`, *fork* y scripts del *registry* Merkle: **Foundry** aporta el *tooling* fiable para bytecode EVM, simulación y *forks* (en la práctica vía **REVM** bajo *forge*). Eso es distinto al **destino** de *deploy* en la *Hub* Polkadot (más abajo).
+- **PVM (Polkadot Virtual Machine) y *solc* vía *resolc***  
+  Un *pipeline* pensado “solo *Hardhat* + pila EVM/REVM” **no basta** para *smart contracts* en *Hub*: el runtime espera **PolkaVM** (bytecode `0x50564D…` *etc.*) y *tooling* **Parity** (`@parity/hardhat-polkadot`, *compile* hacia *resolc*). En el *lab* se convive con **Foundry** para el verificador EVM “de libro” y se usa [evm/polkadot_pvm](evm/polkadot_pvm) para *compile/deploy* hacia *PVM*. Ver [evm/polkadot_pvm/README.md](evm/polkadot_pvm/README.md) (límites, *chainId*, *solc* front) y [YOHUALLI_EVM_CONTRACTS_ARCHITECTURE.md](docs/YOHUALLI_EVM_CONTRACTS_ARCHITECTURE.md).
+- **Límites de Barretenberg / *bb.js* (mensaje demasiado largo)**  
+  Con versiones de `@aztec/bb.js` el **buffer I/O (msgpack)** hacia el WASM quedó corto: aparecían fallos del tipo *Length is too large* o presión de memoria en *proofs* medianos (p. ej. *keccak*, circuitos gordos). Se documenta y atenúa vía *postinstall* y variables (`BB_MSGPACK_*`) en [scripts/patch-aztec-bb-msgpack-scratch.mjs](scripts/patch-aztec-bb-msgpack-scratch.mjs) y *Vite* (ver *CIRCUITS_LAB* / comentarios en *vite*).
 
-```bash
-# Construir para producción
-yarn build
+**Relay / grafo (lab):** [yohualli-gossip-relay-lab.md](docs/yohualli-gossip-relay-lab.md) · Tiers e ideas analíticas: [yohualli-tier-sybilrank-matematica.md](docs/yohualli-tier-sybilrank-matematica.md).
 
-# Vista previa de la build de producción
-yarn preview
-```
+---
 
-## 🌐 Redes Soportadas
+## Código y puesta a marcha (resumen)
 
-### Redes Principales
-- **Polkadot** (wss://rpc.polkadot.io)
-- **Kusama** (wss://kusama-rpc.polkadot.io)
-- **Paseo Relay Chain** (wss://rpc.ibp.network/paseo) - Testnet de Polkadot
+- **PWA (raíz del repo):** *Yarn 4* (`packageManager` en *package.json*).
 
-### Parachains de Polkadot
-- Asset Hub (Polkadot) (wss://polkadot-asset-hub-rpc.polkadot.io)
-- People Chain (Polkadot) (wss://polkadot-people-rpc.polkadot.io)
+  ```bash
+  corepack enable
+  NPM_CONFIG_USER_AGENT=npm/10.0.0 yarn install
+  # o: yarn run install:reliable
+  yarn dev
+  yarn build
+  ```
 
-### Parachains de Kusama
-- Asset Hub (Kusama) (wss://kusama-asset-hub-rpc.polkadot.io)
-- People Chain (Kusama) (wss://kusama-people-rpc.polkadot.io)
+- **Entorno (sin exponer *keys* *en* *CLI*):** plantillas [`.env.example`](.env.example) y [`.env.forge.example`](.env.forge.example) → *copiar* a `.env.local` / `.env.forge.local`; [docs/ENV_SAFETY.md](docs/ENV_SAFETY.md) y `yarn yoh:toolbox check` / `run`. *Testnet* y *VITE_*: [YOHUALLI_TESTNET_OPERATIVO.md](docs/YOHUALLI_TESTNET_OPERATIVO.md).
+- **Aura (wallet) *vs* *este* *repo*:** *origen* *Substrate* / billetera: [docs/aura/README.md](docs/aura/README.md) (enlaza a [github.com/cryptohumano/aura-pwa](https://github.com/cryptohumano/aura-pwa)).
+- **Circuitos:** *Noir* en `circuits/`, *scripts* `npm run` documentados en [CIRCUITS_LAB.md](docs/CIRCUITS_LAB.md).
+- **EVM (Foundry):** `evm/yohualli_honk_verifier/`.
+- **PVM (Hardhat + Polkadot):** `yarn pvm:compile` / *deploy* de prueba desde [evm/polkadot_pvm](evm/polkadot_pvm).
 
-### Parachains de Paseo
-- Asset Hub (Paseo) (wss://sys.ibp.network/asset-hub-paseo)
-- Bridge Hub (Paseo) (wss://sys.ibp.network/bridgehub-paseo)
-- Coretime (Paseo) (wss://sys.ibp.network/coretime-paseo)
-- People (Paseo) (wss://sys.ibp.network/people-paseo)
-- Collectives (Paseo) (wss://collectives-paseo.dotters.network)
+---
 
-## 🎯 Funcionalidades
+## Documentación clave (índice)
 
-### Gestión de Cuentas
-- Crear nuevas cuentas con mnemonic de 12 o 24 palabras
-- Importar cuentas desde mnemonic, URI o archivo JSON
-- Gestionar múltiples cuentas simultáneamente
-- Ver balances en múltiples cadenas
-- Enviar transacciones
+| Documento | Contenido |
+|----------|------------|
+| [Yohualli Protocol draft 1.1.md](docs/Yohualli%20Protocol%20draft%201.1.md) | Visión, arquitectura híbrida, cripto de alto nivel |
+| [YOHUALLI_EVM_CONTRACTS_ARCHITECTURE.md](docs/YOHUALLI_EVM_CONTRACTS_ARCHITECTURE.md) | Identificadores, HD, *gas* *vs* prueba, tablas *lab* |
+| [YOHUALLI_FLUJOS_UX_ACTORES.md](docs/YOHUALLI_FLUJOS_UX_ACTORES.md) | *Mermaid* por actor (Atestaciones, ZK Lab, operador) |
+| [YOHUALLI_POC_PWA_PROVER_DILEMMA.md](docs/YOHUALLI_POC_PWA_PROVER_DILEMMA.md) | Dónde vive el prover en un despliegue realista |
+| [YOHUALLI_ATTESTATION_SIGNING_V0.md](docs/YOHUALLI_ATTESTATION_SIGNING_V0.md) | EIP-712, `subjectCommitment` |
+| [YOHUALLI_TESTNET_OPERATIVO.md](docs/YOHUALLI_TESTNET_OPERATIVO.md) | *Testnet* y *variables* *VITE* |
+| [docs/ENV_SAFETY.md](docs/ENV_SAFETY.md) | Reglas *VITE_* *vs* *forge*; *toolbox* *CLI* |
+| [docs/aura/README.md](docs/aura/README.md) | Relación *Aura* / *Yohualli* y enlace *upstream* *wallet* |
 
-### Seguridad
-- **WebAuthn** - Autenticación con PIN, huella dactilar o hardware key
-- **Encriptación** - Todas las cuentas se almacenan encriptadas localmente
-- **Backup seguro** - Exporta tus datos encriptados con contraseña
-- **Recuperación** - Restaura tu wallet desde un backup
+**Siguiente paso (*roadmap* publicable):** consolidar *whitepaper* o estudio con **fórmulas y suposiciones revisadas** frente a lo comprobado en fase 0, y fijar el corte de **MVP** (circuito, verificador, *registry*, UX mínima de comunidad).
 
-### Privacidad
-- **Identidad On-Chain** - Consulta y gestiona tu identidad en People Chain
-- **Contactos** - Guarda direcciones de contactos frecuentes
-- **Configuración de APIs** - Conecta con servicios externos de forma segura
+---
 
-### Transacciones
-- Enviar tokens a otras direcciones
-- Recibir tokens (mostrar QR code)
-- Ver historial de transacciones
-- Estimar fees antes de enviar
-
-## 🔑 Tipos de Criptografía Soportados
-
-- **sr25519** (Schnorrkel) - Recomendado para Substrate
-- **ed25519** (Edwards) - Alternativa común
-- **ecdsa** - Compatible con Ethereum (usado en Moonbeam)
-
-## 📚 Documentación
-
-La documentación completa del proyecto está disponible en la carpeta `docs/`:
-
-- **[API Design](./docs/API_DESIGN.md)** - Diseño de la API para servicios externos
-- **[Database Structure](./docs/AURA_WALLET_DATABASE.md)** - Estructura de IndexedDB
-- **[UI Structure](./docs/AURA_WALLET_UI_STRUCTURE.md)** - Estructura de páginas y componentes
-- **[WebAuthn Implementation](./docs/WEBAUTHN_IMPLEMENTATION.md)** - Implementación de WebAuthn
-- **[Keyring Flow](./docs/KEYRING_FLOW.md)** - Flujo de gestión del keyring
-- **[PWA Offline Capabilities](./docs/PWA_OFFLINE_CAPABILITIES.md)** - Capacidades offline
-
-## 🛡️ Seguridad
-
-### ⚠️ Advertencia Importante
-
-Aura Wallet es una aplicación **no custodial**. Esto significa:
-
-- **Tú eres el único responsable** de tus claves privadas y fondos
-- **Guarda tu frase de recuperación** en un lugar seguro
-- **Nunca compartas** tu frase de recuperación con nadie
-- **Si pierdes tu frase de recuperación**, perderás acceso permanente a tus fondos
-- **No hay forma de recuperar** tu cuenta sin la frase de recuperación
-
-### Mejores Prácticas
-
-1. **Backup regular** - Exporta tu wallet regularmente
-2. **Contraseña segura** - Usa una contraseña fuerte y única
-3. **WebAuthn** - Configura WebAuthn para autenticación adicional
-4. **Verifica direcciones** - Siempre verifica las direcciones antes de enviar
-5. **Mantén actualizado** - Mantén la aplicación actualizada
-
-## 🏗️ Stack Tecnológico
-
-- **Vite 7** - Build tool ultra rápido
-- **React 18** - Framework UI
-- **TypeScript** - Tipado estático completo
-- **Tailwind CSS 4** - Framework CSS moderno
-- **shadcn/ui** - Componentes UI accesibles y personalizables
-- **Dedot** - Cliente JavaScript de próxima generación para Polkadot
-- **Polkadot.js Keyring** - Gestión de cuentas criptográficas
-- **IndexedDB** - Almacenamiento local encriptado
-- **WebAuthn API** - Autenticación biométrica y con hardware keys
-- **Workbox** - Service Worker para capacidades offline
-
-## 📝 Licencia
-
-MIT
-
-## 🤝 Contribuir
-
-Las contribuciones son bienvenidas. Por favor, abre un issue o pull request para cualquier mejora o corrección.
-
-## 📧 Contacto
-
-Para preguntas o soporte, por favor abre un issue en el repositorio.
+*Yohualli: confianza verificable sin delegar el grafo a la cadena, y prueba matemática allí donde importa asentar el estado crítico.*

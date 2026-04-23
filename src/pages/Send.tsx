@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -241,6 +242,33 @@ export default function Send() {
             Selecciona una red en el navbar para enviar transacciones
           </p>
         </div>
+      </div>
+    )
+  }
+
+  if (selectedChain.evm) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Enviar</h1>
+          <p className="text-muted-foreground mt-2">
+            Esta pantalla envía transferencias Substrate (cuentas del keyring). La red EVM usa otra
+            cuenta y otro flujo (MetaMask).
+          </p>
+        </div>
+        <Alert>
+          <AlertDescription className="text-sm">
+            Para mover PAS en la capa Ethereum de Polkadot Hub, usá tu cartera inyectada desde el
+            inicio o{' '}
+            <Link to="/zk-lab" className="underline font-medium">
+              ZK Lab
+            </Link>
+            . Acá no aplica el formulario de abajo.
+          </AlertDescription>
+        </Alert>
+        <Button asChild variant="outline">
+          <Link to="/">Volver al inicio</Link>
+        </Button>
       </div>
     )
   }

@@ -17,7 +17,7 @@ interface QRPersonalDataShareProps {
 }
 
 export function QRPersonalDataShare({ log }: QRPersonalDataShareProps) {
-  const { accounts } = useKeyringContext()
+  const { accounts, activeAccount } = useKeyringContext()
   const [qrData, setQrData] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
@@ -34,12 +34,12 @@ export function QRPersonalDataShare({ log }: QRPersonalDataShareProps) {
     }
 
     // Obtener cuenta Substrate activa si existe
-    const activeAccount = log.relatedAccount || accounts[0]?.address
+    const substrateForQr = log.relatedAccount || activeAccount?.address || accounts[0]?.address
 
     const qrPersonalData = generatePersonalDataQR(
       personalInfo,
       log.avisoSalida.contactosEmergencia,
-      activeAccount
+      substrateForQr
     )
 
     if (!fitsInQR(qrPersonalData)) {

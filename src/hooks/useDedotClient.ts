@@ -1,10 +1,31 @@
 import { useEffect, useState } from 'react'
 import { DedotClient, WsProvider } from 'dedot'
+import { paseoPassetHub, getPaseoRpcUrl } from '@/config/paseoEvm'
 
 export interface ChainInfo {
   name: string
   endpoint: string
   description?: string
+  /** Si existe, es red solo EVM (JSON-RPC); no usar con Dedot/WebSocket Substrate. */
+  evm?: {
+    chainId: number
+    rpcHttp: string
+    explorerUrl: string
+    symbol: string
+  }
+}
+
+/** Paseo / Polkadot Hub testnet — capa EVM (JSON-RPC), mismo chain ID y RPC que MetaMask. */
+export const POLKADOT_HUB_TESTNET_EVM: ChainInfo = {
+  name: 'Paseo EVM (Polkadot Hub testnet)',
+  endpoint: 'evm:polkadot-hub-testnet',
+  description: 'Ethereum JSON-RPC (Paseo testnet), gas nativo PAS; ver `getPaseoRpcUrl()`',
+  evm: {
+    chainId: paseoPassetHub.id,
+    rpcHttp: getPaseoRpcUrl(),
+    explorerUrl: paseoPassetHub.blockExplorers.default.url,
+    symbol: 'PAS',
+  },
 }
 
 export const DEFAULT_CHAINS: ChainInfo[] = [
@@ -84,6 +105,9 @@ export const DEFAULT_CHAINS: ChainInfo[] = [
     description: 'Collectives Chain de Polkadot - Gobernanza y colectivos (IBP)'
   }
 ]
+
+/** Substrate + opción EVM para el selector de red. */
+export const NETWORK_OPTIONS: ChainInfo[] = [...DEFAULT_CHAINS, POLKADOT_HUB_TESTNET_EVM]
 
 // Endpoints alternativos para cadenas conocidas
 // Usando IBP (Infrastructure Builders' Programme) como principal y dotters.network como fallback
@@ -228,6 +252,8 @@ export function useDedotClient(endpoint: string | null) {
     if (!endpoint) {
       setClient(null)
       setConnectedEndpoint(null)
+      setIsConnecting(false)
+      setError(null)
       return
     }
 

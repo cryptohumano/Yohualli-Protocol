@@ -6,6 +6,9 @@ import { useKeyringContext } from '@/contexts/KeyringContext'
 import { useState } from 'react'
 import Identicon from '@polkadot/react-identicon'
 import { Avatar } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { getKeypairType, keypairTypeBadgeVariant } from '@/utils/keyringDisplay'
+import { DualSubstrateAddressLines } from '@/components/DualSubstrateAddressLines'
 
 export default function Accounts() {
   const { accounts } = useKeyringContext()
@@ -82,29 +85,43 @@ export default function Accounts() {
                       />
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
                         <h3 className="font-semibold truncate">
                           {account.meta.name || 'Sin nombre'}
                         </h3>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <code className="text-xs text-muted-foreground font-mono">
-                          {formatAddress(account.address)}
-                        </code>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => handleCopyAddress(account.address)}
-                          title="Copiar dirección"
+                        <Badge
+                          variant={keypairTypeBadgeVariant(getKeypairType(account.pair))}
+                          className="text-[10px] uppercase tracking-wide shrink-0"
                         >
-                          {copiedAddress === account.address ? (
-                            <Check className="h-3 w-3 text-green-500" />
-                          ) : (
-                            <Copy className="h-3 w-3" />
-                          )}
-                        </Button>
+                          {getKeypairType(account.pair)}
+                        </Badge>
                       </div>
+                      {account.dualSubstrateSs58 ? (
+                        <DualSubstrateAddressLines
+                          dual={account.dualSubstrateSs58}
+                          evmAddress={account.evmBip44Address}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs text-muted-foreground font-mono">
+                            {formatAddress(account.address)}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => handleCopyAddress(account.address)}
+                            title="Copiar dirección"
+                          >
+                            {copiedAddress === account.address ? (
+                              <Check className="h-3 w-3 text-green-500" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
+                      )}
                       {account.meta.tags && account.meta.tags.length > 0 && (
                         <div className="flex gap-1 mt-2">
                           {account.meta.tags.map((tag: string) => (

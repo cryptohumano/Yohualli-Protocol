@@ -11,6 +11,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
+import { AccountSwitcher } from '@/components/layout/AccountSwitcher'
+import { Separator } from '@/components/ui/separator'
 
 const navigation = [
   { name: 'Inicio', href: '/', icon: Home, description: 'Ver resumen de cuentas y balances' },
@@ -65,10 +67,17 @@ export function BottomNav() {
             <SheetHeader>
               <SheetTitle>Navegación</SheetTitle>
               <SheetDescription>
-                Selecciona una opción para navegar
+                Cuenta activa y atajos de pantallas
               </SheetDescription>
             </SheetHeader>
-            <div className="mt-6 space-y-2 pb-4">
+            <div className="mt-4 space-y-3">
+              <div>
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Cuenta activa (Substrate)</p>
+                <AccountSwitcher className="w-full !max-w-none" showInlineLabel={false} />
+              </div>
+              <Separator />
+            </div>
+            <div className="mt-4 space-y-2 pb-4">
               {navigation.map((item) => {
                 const isActive = location.pathname === item.href
                 return (

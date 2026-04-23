@@ -139,37 +139,42 @@ export function KeyringUnlock() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Input
-              type="password"
-              placeholder="Contraseña (cualquiera, para desbloquear y crear tu primera cuenta)"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value)
-                setError(null)
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleUnlock()
-                }
-              }}
-              disabled={isLoading}
-            />
-            {error && (
-              <div className="flex items-center gap-2 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4" />
-                {error}
-              </div>
-            )}
-          </div>
-
-          <Button 
-            onClick={handleUnlock} 
-            disabled={isLoading || !password.trim()} 
-            className="w-full"
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (!isLoading && password.trim()) void handleUnlock()
+            }}
           >
-            {isLoading ? 'Desbloqueando...' : 'Desbloquear para Crear Primera Cuenta'}
-          </Button>
+            <div className="space-y-2">
+              <Input
+                name="password"
+                autoComplete="new-password"
+                type="password"
+                placeholder="Contraseña (cualquiera, para desbloquear y crear tu primera cuenta)"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  setError(null)
+                }}
+                disabled={isLoading}
+              />
+              {error && (
+                <div className="flex items-center gap-2 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  {error}
+                </div>
+              )}
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isLoading || !password.trim()}
+              className="w-full"
+            >
+              {isLoading ? 'Desbloqueando...' : 'Desbloquear para Crear Primera Cuenta'}
+            </Button>
+          </form>
 
           <div className="p-3 bg-muted rounded-lg">
             <p className="text-xs text-muted-foreground">
@@ -227,22 +232,25 @@ export function KeyringUnlock() {
         )}
 
         {/* Opción con contraseña */}
-        <div className="space-y-2">
+        <form
+          className="space-y-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!isLoading && !isWebAuthnLoading && password.trim()) void handleUnlock()
+          }}
+        >
           <div className="text-sm font-medium text-muted-foreground">
             {webauthnCredentials.length > 0 ? 'Contraseña' : 'Desbloquear con Contraseña'}
           </div>
           <Input
+            name="password"
+            autoComplete="current-password"
             type="password"
             placeholder="Contraseña"
             value={password}
             onChange={(e) => {
               setPassword(e.target.value)
               setError(null)
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleUnlock()
-              }
             }}
             disabled={isLoading || isWebAuthnLoading}
           />
@@ -252,14 +260,14 @@ export function KeyringUnlock() {
               {error}
             </div>
           )}
-          <Button 
-            onClick={handleUnlock} 
-            disabled={isLoading || isWebAuthnLoading || !password.trim()} 
+          <Button
+            type="submit"
+            disabled={isLoading || isWebAuthnLoading || !password.trim()}
             className="w-full"
           >
             {isLoading ? 'Desbloqueando...' : 'Desbloquear con Contraseña'}
           </Button>
-        </div>
+        </form>
 
         <div className="p-3 bg-muted rounded-lg">
           <p className="text-xs text-muted-foreground">

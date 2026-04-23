@@ -36,7 +36,7 @@ import {
 export default function DocumentEditor() {
   const { documentId } = useParams<{ documentId: string }>()
   const navigate = useNavigate()
-  const { accounts } = useKeyringContext()
+  const { accounts, activeAccountAddress } = useKeyringContext()
 
   const [isEditing, setIsEditing] = useState(!!documentId)
   const [loading, setLoading] = useState(!!documentId)
@@ -58,10 +58,10 @@ export default function DocumentEditor() {
     } else {
       // Si no hay documentId, usar la primera cuenta disponible
       if (accounts.length > 0) {
-        setSelectedAccount(accounts[0].address)
+        setSelectedAccount(activeAccountAddress || accounts[0].address)
       }
     }
-  }, [documentId, accounts])
+  }, [documentId, accounts, activeAccountAddress])
 
   const loadDocument = async () => {
     if (!documentId) return
@@ -79,7 +79,7 @@ export default function DocumentEditor() {
       setTitle(doc.metadata.title || '')
       setType(doc.type)
       setDescription(doc.metadata.description || '')
-      setSelectedAccount(doc.relatedAccount || accounts[0]?.address || '')
+      setSelectedAccount(doc.relatedAccount || activeAccountAddress || accounts[0]?.address || '')
       setContent('') // El contenido del PDF no se puede editar directamente
       setEncrypt(doc.encrypted || false)
     } catch (error) {

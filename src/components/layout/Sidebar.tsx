@@ -14,6 +14,7 @@ import {
   Award,
   Mountain,
   Settings,
+  FlaskConical,
 } from 'lucide-react'
 
 const navigation = [
@@ -29,6 +30,7 @@ const navigation = [
   { name: 'Bitácoras de Montañismo', href: '/mountain-logs', icon: Mountain },
   { name: 'Expedientes Médicos', href: '/medical-records', icon: Heart },
   { name: 'Atestaciones', href: '/attestations', icon: Award },
+  { name: 'ZK Lab', href: '/zk-lab', icon: FlaskConical },
   { name: 'Configuración', href: '/settings', icon: Settings },
 ]
 

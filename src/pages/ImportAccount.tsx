@@ -4,15 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useKeyringContext } from '@/contexts/KeyringContext'
 import { AlertCircle, CheckCircle, Copy, Eye, EyeOff, Key, FileText, Users } from 'lucide-react'
 import { decryptPolkadotJsBackup, isPolkadotJsBackup } from '@/utils/polkadotJsBackup'
-import { getAllEncryptedAccounts } from '@/utils/secureStorage'
+import { getAllEncryptedAccounts, verifyWalletStoragePassword } from '@/utils/secureStorage'
 
-type CryptoType = 'sr25519' | 'ed25519' | 'ecdsa'
 type ImportMethod = 'mnemonic' | 'uri' | 'json'
 
 export default function ImportAccount() {
@@ -37,7 +36,6 @@ export default function ImportAccount() {
   const [jsonFile, setJsonFile] = useState<File | null>(null)
   const [jsonPassword, setJsonPassword] = useState('')
   const [name, setName] = useState('')
-  const [type, setType] = useState<CryptoType>('sr25519')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showMnemonic, setShowMnemonic] = useState(false)
@@ -51,10 +49,10 @@ export default function ImportAccount() {
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set())
   const [showAccountSelection, setShowAccountSelection] = useState(false)
 
-  // Validar mnemonic (12 o 24 palabras)
+  // Validar longitud BIP39 habitual (12–24 palabras en saltos de 3)
   const validateMnemonic = (mnemonic: string): boolean => {
-    const words = mnemonic.trim().split(/\s+/)
-    return words.length === 12 || words.length === 24
+    const words = mnemonic.trim().split(/\s+/).filter(Boolean)
+    return [12, 15, 18, 21, 24].includes(words.length)
   }
 
   const handleImport = async () => {
@@ -87,6 +85,24 @@ export default function ImportAccount() {
         }
       }
 
+      const alreadyStored = await getAllEncryptedAccounts()
+      if (alreadyStored.length > 0) {
+        if (!password) {
+          setError(
+            'Ya tienes cuentas cifradas en este dispositivo. Rellena el campo de contraseña con la misma con la que desbloqueas la billetera; ahí cifraremos en IndexedDB la nueva importación.'
+          )
+          setLoading(false)
+          return
+        }
+        if (!(await verifyWalletStoragePassword(password))) {
+          setError(
+            'La contraseña de cifrado no coincide: debe ser la misma que desencripta el resto de cuentas (la del desbloqueo de la billetera en este aparato).'
+          )
+          setLoading(false)
+          return
+        }
+      }
+
       let account = null
 
       switch (method) {
@@ -98,7 +114,7 @@ export default function ImportAccount() {
           }
 
           if (!validateMnemonic(mnemonic)) {
-            setError('La frase de recuperación debe tener 12 o 24 palabras')
+            setError('La frase de recuperación debe tener 12, 15, 18, 21 o 24 palabras (BIP39)')
             setLoading(false)
             return
           }
@@ -106,7 +122,7 @@ export default function ImportAccount() {
           account = await addFromMnemonic(
             mnemonic.trim(),
             name.trim() || undefined,
-            type,
+            'sr25519',
             password || undefined
           )
           break
@@ -121,7 +137,7 @@ export default function ImportAccount() {
           account = await addFromUri(
             uri.trim(),
             name.trim() || undefined,
-            type,
+            'sr25519',
             password || undefined
           )
           break
@@ -147,10 +163,10 @@ export default function ImportAccount() {
               return
             }
 
-            // Verificar si es un archivo de backup de Aura Wallet
+            // Verificar si es un archivo de backup de Yohualli Protocol
             if (parsed.version && parsed.accounts && Array.isArray(parsed.accounts) && !parsed.encoded) {
-              // Es un archivo de backup completo de Aura Wallet
-              setError('Este es un archivo de backup completo de Aura Wallet. Por favor, usa la opción "Importar Backup Completo" desde la pantalla de inicio (onboarding) o desde Configuración > Seguridad > Backup e Importación.')
+              // Es un archivo de backup completo de Yohualli Protocol
+              setError('Este es un archivo de backup completo de Yohualli Protocol. Por favor, usa la opción "Importar Backup Completo" desde la pantalla de inicio (onboarding) o desde Configuración > Seguridad > Backup e Importación.')
               setLoading(false)
               return
             }
@@ -204,14 +220,14 @@ export default function ImportAccount() {
             } else if (parsed.mnemonic) {
               // JSON con mnemonic simple
               if (!validateMnemonic(parsed.mnemonic)) {
-                setError('El mnemonic en el JSON debe tener 12 o 24 palabras')
+                setError('El mnemonic en el JSON debe tener 12, 15, 18, 21 o 24 palabras (BIP39)')
                 setLoading(false)
                 return
               }
               account = await addFromMnemonic(
                 parsed.mnemonic,
                 parsed.name || name.trim() || undefined,
-                parsed.type || type,
+                parsed.type || 'sr25519',
                 password || undefined
               )
             } else if (parsed.uri || parsed.seed) {
@@ -219,13 +235,13 @@ export default function ImportAccount() {
               account = await addFromUri(
                 parsed.uri || parsed.seed,
                 parsed.name || name.trim() || undefined,
-                parsed.type || type,
+                parsed.type || 'sr25519',
                 password || undefined
               )
             } else {
-              // Verificar si podría ser un backup completo de Aura Wallet
+              // Verificar si podría ser un backup completo de Yohualli Protocol
               if (parsed.version || (parsed.accounts && Array.isArray(parsed.accounts))) {
-                setError('Este parece ser un archivo de backup completo de Aura Wallet. Por favor, usa la opción "Importar Backup Completo" desde la pantalla de inicio o desde Configuración > Seguridad > Backup e Importación.')
+                setError('Este parece ser un archivo de backup completo de Yohualli Protocol. Por favor, usa la opción "Importar Backup Completo" desde la pantalla de inicio o desde Configuración > Seguridad > Backup e Importación.')
               } else {
                 setError('El JSON debe ser un archivo de Polkadot.js (con address y encoded) o contener "mnemonic", "uri" o "seed"')
               }
@@ -488,7 +504,7 @@ export default function ImportAccount() {
             {/* Frase de Recuperación */}
             <TabsContent value="mnemonic" className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="mnemonic">Frase de Recuperación (12 o 24 palabras)</Label>
+                <Label htmlFor="mnemonic">Frase de recuperación (BIP39)</Label>
                 <div className="relative">
                   <Input
                     id="mnemonic"
@@ -513,7 +529,7 @@ export default function ImportAccount() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Ingresa las 12 o 24 palabras de tu frase de recuperación separadas por espacios
+                  Ingresa tu frase (12, 15, 18, 21 o 24 palabras) separadas por espacios
                 </p>
               </div>
             </TabsContent>
@@ -537,6 +553,15 @@ export default function ImportAccount() {
 
             {/* Archivo JSON */}
             <TabsContent value="json" className="space-y-4">
+              <Alert>
+                <AlertTitle>Tipo de criptografía en JSON de Polkadot.js</AlertTitle>
+                <AlertDescription className="text-sm">
+                  Si el archivo es de Polkadot.js (con <code className="text-xs">address</code> y{' '}
+                  <code className="text-xs">encoded</code>), el tipo de par (sr25519, ed25519, ecdsa, ethereum)
+                  viene dentro del propio JSON; el selector &quot;Tipo de Criptografía&quot; de abajo no lo
+                  cambia. Tras importar, confirme el tipo en la lista de Cuentas (etiqueta junto al nombre).
+                </AlertDescription>
+              </Alert>
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="jsonFile">Seleccionar Archivo JSON</Label>
@@ -638,19 +663,25 @@ export default function ImportAccount() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="type">Tipo de Criptografía</Label>
-            <select
-              id="type"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={type}
-              onChange={(e) => setType(e.target.value as CryptoType)}
-            >
-              <option value="sr25519">sr25519 (Schnorrkel - Recomendado)</option>
-              <option value="ed25519">ed25519 (Edwards-Curve)</option>
-              <option value="ecdsa">ecdsa (ECDSA)</option>
-            </select>
-          </div>
+          {method === 'json' ? (
+            <div className="space-y-2">
+              <Label>Tipo de criptografía</Label>
+              <p className="text-sm text-muted-foreground rounded-md border border-dashed px-3 py-2">
+                Con JSON de Polkadot.js el tipo viene del archivo. Si el JSON trae solo{' '}
+                <code className="text-xs">mnemonic</code> / <code className="text-xs">uri</code>, puede incluir{' '}
+                <code className="text-xs">type</code>; si no, se usa <strong>sr25519</strong> para la cuenta guardada.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>Derivación</Label>
+              <p className="text-sm text-muted-foreground rounded-md border border-dashed px-3 py-2">
+                Con frase o URI sin JSON, la cuenta se guarda como <strong>sr25519</strong> y en Cuentas verá las
+                vistas SS58 <strong>sr25519</strong>, <strong>ed25519</strong>, <strong>ecdsa</strong> y la{' '}
+                <strong>0x</strong> EVM (BIP44) derivadas de la misma frase.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="password">Contraseña para Proteger la Cuenta (Opcional)</Label>

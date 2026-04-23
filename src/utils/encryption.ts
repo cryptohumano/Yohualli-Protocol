@@ -20,7 +20,9 @@ function ensureCryptoAvailable(): void {
   }
   
   if (!crypto.subtle) {
-    throw new Error('crypto.subtle no está disponible. Asegúrate de usar HTTPS o localhost.')
+    throw new Error(
+      'crypto.subtle no está disponible: el sitio debe servirse por HTTPS (p. ej. https://IP-LAN:5173 con mkcert) o ser localhost en este mismo dispositivo. En el móvil, http://IP no es contexto seguro.'
+    )
   }
   
   if (!crypto.getRandomValues) {

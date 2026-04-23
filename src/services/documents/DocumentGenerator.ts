@@ -61,7 +61,7 @@ export async function createDocument(options: CreateDocumentOptions): Promise<Do
       author: options.pdfOptions.metadata?.author || options.pdfOptions.author || options.relatedAccount,
       subject: options.pdfOptions.metadata?.subject || options.pdfOptions.subject,
       keywords: options.pdfOptions.metadata?.keywords || options.pdfOptions.keywords,
-      creator: 'Aura Wallet',
+      creator: 'Yohualli Protocol',
       producer: 'jsPDF',
       createdAt: new Date().toISOString(),
     },
@@ -124,7 +124,7 @@ export async function createDocumentWithTable(
     metadata: {
       title,
       ...options?.metadata,
-      creator: 'Aura Wallet',
+      creator: 'Yohualli Protocol',
       producer: 'jsPDF',
       createdAt: new Date().toISOString(),
     },
