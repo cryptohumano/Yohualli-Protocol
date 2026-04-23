@@ -1,5 +1,7 @@
 # Dilema PoC: prover Honk (ECDSA) en la PWA y cierre con «bring your own infrastructure»
 
+**Inglés (resumen en paralelo):** [YOHUALLI_POC_PWA_PROVER_DILEMMA.en.md](YOHUALLI_POC_PWA_PROVER_DILEMMA.en.md) — **política de idiomas:** [protocol-docs-languages.md](protocol-docs-languages.md)
+
 Este documento fija un **criterio de decisión** tras el trabajo de laboratorio con Noir, Barretenberg (`@aztec/bb.js` en WebAssembly) y el circuito [`yohualli_merkle_attest_v1`](../circuits/yohualli_merkle_attest_v1/src/main.nr) (v1: `verify_signature` de ECDSA secp256k1 + `merkle_root` pública). No sustituye el borrador amplio de protocolo en [Yohualli Protocol draft 1.1.md](Yohualli%20Protocol%20draft%201.1.md), pero **aterriza** un punto que allí solo se insinúa: dónde se *genera* la prueba en un despliegue realista.
 
 ### Aclaración: PoC en PWA (iOS / Android) y BYOI (no se excluyen)

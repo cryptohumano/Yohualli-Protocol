@@ -1,5 +1,7 @@
 # Circuitos ZK en el repositorio (laboratorio)
 
+**Inglés (resumen en paralelo):** [CIRCUITS_LAB.en.md](CIRCUITS_LAB.en.md) — **política de idiomas:** [protocol-docs-languages.md](protocol-docs-languages.md)
+
 Este documento resume **qué hay implementado en código** respecto a circuitos Noir / Barretenberg y la **documentación de protocolo** donde se describe el diseño completo (no implementado al 100 % en la PWA). **Criterio de PoC** (prover en PWA *vs* generación *fuera* del *browser*): [YOHUALLI_POC_PWA_PROVER_DILEMMA.md](YOHUALLI_POC_PWA_PROVER_DILEMMA.md).
 
 ## Código: `circuits/` (Noir en el repo)

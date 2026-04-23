@@ -1,7 +1,21 @@
-# Documentación “pura” Aura (GPS, túneles, *GitHub* *Pages*…)
+# “Pure” Aura documentation (legacy paths)
 
-Al reorientar el repositorio hacia **Yohualli-Protocol** se dejó de mantener *en* *este* *árbol* *por* *defecto* una parte de `docs/` propia de **Aura** (diseño de API, móvil, GPS/GPX, túneles, *etc.*). Eso no borra el historial en Git: sigue viviendo en [**aura-pwa**](https://github.com/cryptohumano/aura-pwa) (p. ej. rama `andino` y *commits* antiguos en GitHub).
+*English and **Español (América Latina)**. Neutral copy.*
 
-- Para *recuperar* un archivo: *clone* o *navegación* *web* *del* *repo* *en* *la* *rama* *mencionada*.
+---
 
-En este repositorio el foco *activo* de documentación operativa es `docs/YOHUALLI_*` y circuitos. La base *Aura* queda referenciada en [README de esta carpeta](./README.md).
+## English
+
+When the repository moved to **Yohualli-Protocol**, we **stopped** maintaining, in the **default tree** here, a set of `docs/` that were specific to the **Aura** *wallet* (API sketches, mobile, GPS/GPX, *GitHub* *Pages* tunnels, *etc.*). That is **not** a deletion from Git: history is still in [**aura-pwa**](https://github.com/cryptohumano/aura-pwa) (e.g. the `andino` branch and older *commits* on *GitHub*).
+
+- To *recover* a file: *clone* that repository or use the *GitHub* file browser for the right branch.  
+- **Active** operational documentation in this repository is `docs/YOHUALLI_*` and circuit notes. The Aura *line* is only **referenced** from [this folder’s `README.md`](./README.md).
+
+---
+
+## Español (América Latina)
+
+Al reorientar el repositorio hacia **Yohualli-Protocol** se dejó de **mantener en el árbol por *defecto* aquí** un conjunto de `docs/` del **Aura** *wallet* (API, móvil, GPS o GPX, túneles, *etc.*). Eso **no** las borra del historial: siguen en [**aura-pwa**](https://github.com/cryptohumano/aura-pwa) (por ejemplo rama `andino` o *commits* viejos en *GitHub*).
+
+- Para **recuperar** un archivo, clona el repositorio o *navega* el *árbol* *en* *GitHub* en la rama correcta.  
+- La documentación *operativa* **viva** en **este** *repo* es `docs/YOHUALLI_*` y *circuitos*. La *línea* *Aura* queda **referenciada** en [README de esta carpeta](README.md).
