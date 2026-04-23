@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { decodeAddress } from '@polkadot/util-crypto'
 import { useKeyringContext } from '@/contexts/KeyringContext'
 import { SocialGraphService } from '@/social-graph/socialGraphService'
@@ -38,6 +39,10 @@ import {
 } from '@/social-graph/yohualliSubstratePath'
 import { paseoPassetHub } from '@/config/paseoEvm'
 import {
+  getDefaultYohualliRelayWsForAttestations,
+  getYohualliRelayRailwayUrl,
+} from '@/config/yohualliRelayPublic'
+import {
   getYohualliAttestationSignerFromHdSuri,
   signYohualliAttestationV0FromHdSuri,
   toYohualliEip712V0Bundle,
@@ -64,13 +69,10 @@ function shortSs58(addr: string): string {
   return `${addr.slice(0, 10)}…${addr.slice(-8)}`
 }
 
-const defaultRelayWs =
-  (typeof import.meta.env.VITE_YOHUALLI_RELAY_WS === 'string'
-    ? import.meta.env.VITE_YOHUALLI_RELAY_WS
-    : '') ?? ''
-
 /** Relay escuchando en la máquina donde corre Node (ver `relay/README.md`). */
 const DIRECT_RELAY_WS = 'ws://127.0.0.1:8080'
+
+const RAILWAY_RELAY_PRESET = getYohualliRelayRailwayUrl()
 
 /** En `vite dev`, el proxy `/__yohualli_relay` evita que el browser abra 127.0.0.1 (falla en IDE/port-forward). */
 function relayUrlViaViteProxy(): string {
@@ -84,10 +86,32 @@ function isMixedContentWsOnHttps(url: string): boolean {
   return window.location.protocol === 'https:' && url.trim().startsWith('ws://')
 }
 
+/** Primer carga: relay por env, Railway, o (solo dev) proxy de Vite; ajusta mixed content del ws:// bajo https. */
+function getInitialAttestationsRelayState(): { transport: TransportKind; url: string } {
+  const base = getDefaultYohualliRelayWsForAttestations()
+  if (base) {
+    let u = base
+    if (typeof window !== 'undefined' && isMixedContentWsOnHttps(u)) u = relayUrlViaViteProxy()
+    return { transport: 'websocket', url: u }
+  }
+  if (import.meta.env.DEV && typeof window !== 'undefined') {
+    return { transport: 'websocket', url: relayUrlViaViteProxy() }
+  }
+  return { transport: 'broadcast', url: '' }
+}
+
+const RELAY_UI_GRACE_MS = 10_000
+
 export default function Attestations() {
+  const { t } = useTranslation('pages')
   const { accounts, isUnlocked, activeAccountAddress } = useKeyringContext()
-  const [transportKind, setTransportKind] = useState<TransportKind>('broadcast')
-  const [relayWsUrl, setRelayWsUrl] = useState(defaultRelayWs)
+  const initialRelay = useMemo(() => getInitialAttestationsRelayState(), [])
+  const [transportKind, setTransportKind] = useState<TransportKind>(() => initialRelay.transport)
+  const [relayWsUrl, setRelayWsUrl] = useState(() => initialRelay.url)
+  /** Tras 10 s en la página, o al fallar el WS, o si el usuario abre, mostramos URL/atajos. Mientras, solo auto-conexión. */
+  const [inRelayConfigGrace, setInRelayConfigGrace] = useState(true)
+  const [relayWssAutoconnectFailed, setRelayWssAutoconnectFailed] = useState(false)
+  const [userOpenedRelayConfig, setUserOpenedRelayConfig] = useState(false)
   const [subjectAddress, setSubjectAddress] = useState('')
   /** Cuenta propia cuyo SS58 va en el QR como solicitante (solo cuentas locales). */
   const [qrRequestAccount, setQrRequestAccount] = useState('')
@@ -117,6 +141,31 @@ export default function Attestations() {
   }, [graph, transportKind, relayWsUrl, accounts, qrRequestAccount, subjectAddress])
 
   const [p2pOn, setP2pOn] = useState(false)
+
+  const showWebsocketRelayConfigFields = useMemo(() => {
+    if (transportKind !== 'websocket') return true
+    if (typeof window !== 'undefined' && isMixedContentWsOnHttps(relayWsUrl)) return true
+    if (userOpenedRelayConfig) return true
+    if (relayWssAutoconnectFailed) return true
+    return !inRelayConfigGrace
+  }, [
+    inRelayConfigGrace,
+    relayWssAutoconnectFailed,
+    relayWsUrl,
+    transportKind,
+    userOpenedRelayConfig,
+  ])
+
+  useLayoutEffect(() => {
+    if (initialRelay.transport !== 'websocket' || !initialRelay.url.trim()) return
+    setP2pOn(true)
+  }, [initialRelay])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const id = window.setTimeout(() => setInRelayConfigGrace(false), RELAY_UI_GRACE_MS)
+    return () => clearTimeout(id)
+  }, [])
   const [stats, setStats] = useState<GraphStats | null>(null)
   const [selectedAttester, setSelectedAttester] = useState('')
   const [subjectLockedFromQr, setSubjectLockedFromQr] = useState(false)
@@ -192,6 +241,7 @@ export default function Attestations() {
       .start()
       .then(() => {
         if (cancelled) return
+        setRelayWssAutoconnectFailed(false)
         unsub = gossipNode.subscribe(() => {
           void refreshUi()
           setConnBump((n) => n + 1)
@@ -207,6 +257,9 @@ export default function Attestations() {
       })
       .catch((e) => {
         if (cancelled) return
+        if (transportKind === 'websocket') {
+          setRelayWssAutoconnectFailed(true)
+        }
         setLastError(e instanceof Error ? e.message : String(e))
         setP2pOn(false)
       })
@@ -524,28 +577,33 @@ export default function Attestations() {
     [accounts, gossipNode, p2pOn, relayWsUrl, transportKind]
   )
 
-  const publishLabel =
-    transportKind === 'websocket' && relayWsUrl.trim()
+  const publishLabel = useMemo(() => {
+    return transportKind === 'websocket' && relayWsUrl.trim()
       ? p2pOn
-        ? 'Firmar y publicar (WSS relay)'
-        : 'Firmar y guardar local (encola p/ relay al conectar gossip)'
+        ? t('attestations.publishWSSon')
+        : t('attestations.publishWSSoff')
       : p2pOn
-        ? 'Firmar y publicar (BroadcastChannel)'
-        : 'Firmar y guardar local'
+        ? t('attestations.publishBC')
+        : t('attestations.publishLocal')
+  }, [p2pOn, relayWsUrl, transportKind, t])
 
   return (
     <div className="space-y-6 p-4 md:p-6 max-w-5xl mx-auto">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Atestaciones y grafo (Yohualli)</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('attestations.title')}</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Grafo local en IndexedDB; gossip entre pestañas (BroadcastChannel) o entre PWAs / dispositivos
-          usando un relay WebSocket (p. ej. <code className="text-xs">relay/</code> en Railway con{' '}
-          <code className="text-xs">wss://</code> y la PWA en GitHub Pages con la misma URL en{' '}
-          <code className="text-xs">VITE_YOHUALLI_RELAY_WS</code>).
+          <Trans
+            i18nKey="pages:attestations.lead"
+            components={[
+              <code className="text-xs" key="0" />,
+              <code className="text-xs" key="1" />,
+              <code className="text-xs" key="2" />,
+            ]}
+          />
         </p>
         <Alert className="mt-3">
           <Network className="h-4 w-4" />
-          <AlertTitle className="text-sm">Atestar ≠ Merkle on-chain</AlertTitle>
+          <AlertTitle className="text-sm">{t('attestations.alertMerkleTitle')}</AlertTitle>
           <AlertDescription className="text-xs text-muted-foreground space-y-1.5">
             <p>
               Aquí <strong>firmáis y guardáis</strong> atestaciones en el grafo local; el <code className="text-xs">subjectCommitment</code>{' '}
@@ -595,19 +653,23 @@ export default function Attestations() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Network className="h-5 w-5" />
-            Capa P2P (lab)
+            {t('attestations.p2pTitle')}
           </CardTitle>
           <CardDescription>
-            Elegí <strong>WebSocket</strong> y una URL de relay para que las firmas puedan salir a otras PWAs. El
-            modo <strong>BroadcastChannel</strong> solo comparte entre pestañas del mismo origen: si firmás ahí, al
-            pasar a WebSocket y conectar gossip se <strong>reenvían solas</strong> las firmas locales aún no
-            transmitidas. Con WSS, la PWA registra intereses (tus cuentas y sujeto de prueba); el relay filtra; si
-            publicás sin socket, queda en cola. Botones abajo: reenvío manual y catch-up del buffer del relay.
+            <Trans
+              i18nKey="pages:attestations.p2pDesc"
+              components={[
+                <strong key="0" />,
+                <strong key="1" />,
+                <strong key="2" />,
+                <strong key="3" />,
+              ]}
+            />
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2 max-w-md">
-            <Label htmlFor="transport">Transporte gossip</Label>
+            <Label htmlFor="transport">{t('attestations.labelTransport')}</Label>
             <select
               id="transport"
               className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
@@ -618,21 +680,21 @@ export default function Attestations() {
                 setTransportKind(v)
                 if (v === 'websocket') {
                   setRelayWsUrl((prev) => {
-                    const t = prev.trim()
-                    if (t !== '') return prev
+                    const cur = prev.trim()
+                    if (cur !== '') return prev
                     if (typeof window === 'undefined') return prev
                     return window.location.protocol === 'https:' ? relayUrlViaViteProxy() : DIRECT_RELAY_WS
                   })
                 }
               }}
             >
-              <option value="broadcast">BroadcastChannel (misma máquina / mismo origen)</option>
-              <option value="websocket">WebSocket relay (dos puertos, otra máquina, PWA desplegada…)</option>
+              <option value="broadcast">{t('attestations.optBC')}</option>
+              <option value="websocket">{t('attestations.optWss')}</option>
             </select>
           </div>
           {transportKind === 'broadcast' ? (
             <Alert>
-              <AlertTitle>BroadcastChannel = mismo origen</AlertTitle>
+              <AlertTitle>{t('attestations.bcAlertTitle')}</AlertTitle>
               <AlertDescription className="text-sm space-y-2">
                 <p>
                   Solo comparte gossip entre pestañas del <strong>mismo sitio</strong> (mismo protocolo, host y
@@ -658,7 +720,7 @@ export default function Attestations() {
             <div className="space-y-2 max-w-xl">
               {typeof window !== 'undefined' && isMixedContentWsOnHttps(relayWsUrl) ? (
                 <Alert variant="destructive">
-                  <AlertTitle>Mixed content: HTTPS + ws://</AlertTitle>
+                  <AlertTitle>{t('attestations.mixedTitle')}</AlertTitle>
                   <AlertDescription className="text-sm space-y-2">
                     <p>
                       Esta pestaña carga por <strong>HTTPS</strong>; el navegador no abre <code className="text-xs">ws://</code>{' '}
@@ -672,17 +734,39 @@ export default function Attestations() {
                       disabled={p2pOn}
                       onClick={() => setRelayWsUrl(relayUrlViaViteProxy())}
                     >
-                      Corregir: usar proxy
+                      {t('attestations.fixUseProxy')}
                     </Button>
                   </AlertDescription>
                 </Alert>
               ) : null}
-              <Label htmlFor="relay-ws">URL del relay (ws:// local o wss:// en prod.)</Label>
-              <div className="flex flex-wrap gap-2 items-center">
+              {!showWebsocketRelayConfigFields && !isMixedContentWsOnHttps(relayWsUrl) ? (
+                <div className="rounded-md border border-dashed bg-muted/30 px-3 py-2 text-sm text-muted-foreground space-y-2">
+                  <p>{t('attestations.autoConnectBanner')}</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setUserOpenedRelayConfig(true)
+                      setInRelayConfigGrace(false)
+                    }}
+                  >
+                    {t('attestations.showRelayOptions')}
+                  </Button>
+                </div>
+              ) : null}
+              {showWebsocketRelayConfigFields ? (
+                <>
+              <div className="space-y-2">
+                <Label htmlFor="relay-ws">{t('attestations.labelRelayUrl')}</Label>
+                <p className="text-xs text-muted-foreground font-medium">
+                  {t('attestations.relayPresets')}
+                </p>
+                <div className="flex flex-wrap gap-2 items-center">
                 <Input
                   id="relay-ws"
-                  className="font-mono text-xs flex-1 min-w-[200px]"
-                  placeholder="wss://este-host/__yohualli_relay o ws://127.0.0.1:8080"
+                  className="font-mono text-xs flex-1 min-w-[200px] basis-full sm:basis-auto"
+                  placeholder={t('attestations.phRelay')}
                   value={relayWsUrl}
                   disabled={p2pOn}
                   onChange={(e) => setRelayWsUrl(e.target.value)}
@@ -706,6 +790,19 @@ export default function Attestations() {
                 >
                   Directo :8080
                 </Button>
+                {RAILWAY_RELAY_PRESET ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={p2pOn}
+                    title={RAILWAY_RELAY_PRESET}
+                    onClick={() => setRelayWsUrl(RAILWAY_RELAY_PRESET)}
+                  >
+                    {t('attestations.relayPresetRailway')}
+                  </Button>
+                ) : null}
+                </div>
               </div>
               <p className="text-xs text-muted-foreground">
                 El relay debe estar en marcha (<code className="text-xs">npm run relay:yohualli</code>). Con{' '}
@@ -715,15 +812,22 @@ export default function Attestations() {
                 <strong>curl</strong> a <code className="text-xs">8080/health</code> funciona pero el WS directo no,
                 el proxy también ayuda en vista embebida / port-forward.
               </p>
+                </>
+              ) : null}
             </div>
           ) : null}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Estado:</span>
+              <span className="text-sm text-muted-foreground">{t('attestations.status')}</span>
               <Badge variant={p2pOn ? 'default' : 'secondary'}>
                 {!p2pOn
-                  ? 'Sin gossip'
-                  : `${transportKind === 'websocket' ? 'WSS' : 'BC'}${gossipNode.connected ? ' · enlace listo' : ' · conectando…'}`}
+                  ? t('attestations.gossipOff')
+                  : t('attestations.gossipTypeState', {
+                      type: transportKind === 'websocket' ? 'WSS' : 'BC',
+                      state: gossipNode.connected
+                        ? t('attestations.gossipLinkReady')
+                        : t('attestations.gossipConnecting'),
+                    })}
               </Badge>
             </div>
             <Button
@@ -734,22 +838,20 @@ export default function Attestations() {
                 setLastError(null)
                 if (!p2pOn && transportKind === 'websocket' && typeof window !== 'undefined') {
                   if (isMixedContentWsOnHttps(relayWsUrl)) {
-                    setLastError(
-                      'HTTPS bloquea ws://. Pulsá "Proxy /__yohualli_relay" o "Corregir: usar proxy" y volvé a conectar.'
-                    )
+                    setLastError(t('attestations.mixedContentError'))
                     return
                   }
                 }
                 setP2pOn((v) => !v)
               }}
             >
-              {p2pOn ? 'Desconectar' : 'Conectar gossip'}
+              {p2pOn ? t('attestations.disGossip') : t('attestations.conGossip')}
             </Button>
           </div>
           {transportKind === 'websocket' && relayWsUrl.trim() ? (
             <div className="flex flex-wrap gap-2 pt-1 w-full">
               <Button type="button" variant="outline" size="sm" onClick={() => void handleReplayLocalToRelay()}>
-                Reenviar firmas locales al relay
+                {t('attestations.relayRtf')}
               </Button>
               <Button
                 type="button"
@@ -759,7 +861,7 @@ export default function Attestations() {
                 onClick={() => handleRelayCatchupFromZero()}
                 title="Vuelve a pedir el buffer del relay (afterSeq=0). Útil para el sujeto u otra pestaña; el grafo deduplica por id. Si el socket no está listo, verás un error arriba."
               >
-                Catch-up relay desde cero
+                {t('attestations.catchup')}
               </Button>
             </div>
           ) : null}

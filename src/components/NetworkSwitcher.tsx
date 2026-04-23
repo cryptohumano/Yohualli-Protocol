@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { NETWORK_OPTIONS, type ChainInfo } from '@/hooks/useDedotClient'
 import {
   Select,
@@ -9,16 +8,26 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Wifi, WifiOff, Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface NetworkSwitcherProps {
   selectedChain: ChainInfo | null
   onSelectChain: (chain: ChainInfo) => void
   isConnecting: boolean
+  /** p. ej. ancho completo en cabecera móvil apilada */
+  className?: string
+  triggerClassName?: string
 }
 
-export function NetworkSwitcher({ selectedChain, onSelectChain, isConnecting }: NetworkSwitcherProps) {
+export function NetworkSwitcher({
+  selectedChain,
+  onSelectChain,
+  isConnecting,
+  className,
+  triggerClassName,
+}: NetworkSwitcherProps) {
   return (
-    <div className="flex items-center gap-2">
+    <div className={cn('flex min-w-0 items-center gap-1.5 sm:gap-2', className)}>
       {isConnecting ? (
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
       ) : selectedChain ? (
@@ -36,7 +45,12 @@ export function NetworkSwitcher({ selectedChain, onSelectChain, isConnecting }: 
         }}
         disabled={isConnecting}
       >
-        <SelectTrigger className="w-[min(100vw-8rem,280px)] max-w-[280px]">
+        <SelectTrigger
+          className={cn(
+            'h-8 min-w-0 w-full max-w-full sm:h-9 sm:w-[min(100vw-8rem,280px)] sm:max-w-[280px] text-left text-xs sm:text-sm',
+            triggerClassName
+          )}
+        >
           <SelectValue placeholder="Seleccionar red">
             {selectedChain ? selectedChain.name : 'Seleccionar red'}
           </SelectValue>

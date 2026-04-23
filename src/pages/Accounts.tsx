@@ -4,6 +4,7 @@ import { Plus, Download, Copy, Check, ExternalLink } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useKeyringContext } from '@/contexts/KeyringContext'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Identicon from '@polkadot/react-identicon'
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +12,7 @@ import { getKeypairType, keypairTypeBadgeVariant } from '@/utils/keyringDisplay'
 import { DualSubstrateAddressLines } from '@/components/DualSubstrateAddressLines'
 
 export default function Accounts() {
+  const { t } = useTranslation('pages')
   const { accounts } = useKeyringContext()
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null)
 
@@ -27,22 +29,22 @@ export default function Accounts() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Cuentas</h1>
+          <h1 className="text-3xl font-bold">{t('accounts.title')}</h1>
           <p className="text-muted-foreground mt-2">
-            Gestiona tus cuentas del keyring
+            {t('accounts.subtitle')}
           </p>
         </div>
         <div className="flex gap-2">
           <Button asChild variant="outline">
             <Link to="/accounts/import">
               <Download className="mr-2 h-4 w-4" />
-              Importar
+              {t('accounts.import')}
             </Link>
           </Button>
           <Button asChild>
             <Link to="/accounts/create">
               <Plus className="mr-2 h-4 w-4" />
-              Crear Cuenta
+              {t('accounts.create')}
             </Link>
           </Button>
         </div>
@@ -50,22 +52,23 @@ export default function Accounts() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Tus Cuentas</CardTitle>
+          <CardTitle>{t('accounts.yours')}</CardTitle>
           <CardDescription>
-            {accounts.length > 0 
-              ? `${accounts.length} cuenta${accounts.length > 1 ? 's' : ''} configurada${accounts.length > 1 ? 's' : ''}`
-              : 'Lista de todas tus cuentas configuradas'
-            }
+            {accounts.length > 0
+              ? t(accounts.length === 1 ? 'accounts.countOne' : 'accounts.countMany', {
+                  count: accounts.length,
+                })
+              : t('accounts.listHint')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {accounts.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
-              <p className="mb-4">No hay cuentas configuradas aún</p>
+              <p className="mb-4">{t('accounts.empty')}</p>
               <Button asChild>
                 <Link to="/accounts/create">
                   <Plus className="mr-2 h-4 w-4" />
-                  Crear Primera Cuenta
+                  {t('accounts.createFirst')}
                 </Link>
               </Button>
             </div>
@@ -87,7 +90,7 @@ export default function Accounts() {
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         <h3 className="font-semibold truncate">
-                          {account.meta.name || 'Sin nombre'}
+                          {account.meta.name || t('accounts.noName')}
                         </h3>
                         <Badge
                           variant={keypairTypeBadgeVariant(getKeypairType(account.pair))}
@@ -112,7 +115,7 @@ export default function Accounts() {
                             size="sm"
                             className="h-6 w-6 p-0"
                             onClick={() => handleCopyAddress(account.address)}
-                            title="Copiar dirección"
+                            title={t('accounts.copyAddress')}
                           >
                             {copiedAddress === account.address ? (
                               <Check className="h-3 w-3 text-green-500" />
@@ -140,7 +143,7 @@ export default function Accounts() {
                     <Button asChild variant="outline" size="sm">
                       <Link to={`/accounts/${account.address}`}>
                         <ExternalLink className="mr-2 h-4 w-4" />
-                        Ver Detalles
+                        {t('accounts.viewDetails')}
                       </Link>
                     </Button>
                   </div>

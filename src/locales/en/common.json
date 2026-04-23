@@ -1,0 +1,53 @@
+{
+  "app": {
+    "name": "Yohualli Protocol"
+  },
+  "header": {
+    "logout": "Sign out"
+  },
+  "lang": {
+    "label": "Language",
+    "en": "English",
+    "es": "Español (Latin America)"
+  },
+  "nav": {
+    "home": "Home",
+    "accounts": "Accounts",
+    "send": "Send",
+    "receive": "Receive",
+    "tx": "Transactions",
+    "networks": "Networks",
+    "contacts": "Contacts",
+    "documents": "Documents",
+    "flightLogs": "Flight logs",
+    "mountain": "Mountaineering logs",
+    "medical": "Medical records",
+    "attestations": "Attestations",
+    "zkLab": "ZK Lab",
+    "settings": "Settings"
+  },
+  "bottomNav": {
+    "openMenu": "Open navigation menu",
+    "sheetTitle": "Navigation",
+    "sheetDescription": "Active account and screen shortcuts",
+    "activeAccount": "Active account (Substrate)"
+  },
+  "bottomItems": {
+    "accounts": {
+      "title": "Accounts",
+      "description": "Manage your accounts"
+    },
+    "attestations": {
+      "title": "Attestations",
+      "description": "Graph, gossip, and EIP-712 attestation (lab)"
+    },
+    "zkLab": {
+      "title": "ZK Lab",
+      "description": "Noir circuits, proofs, and EVM (lab)"
+    },
+    "settings": {
+      "title": "Settings",
+      "description": "Preferences and options"
+    }
+  }
+}

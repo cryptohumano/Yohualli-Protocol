@@ -11,10 +11,12 @@ import { useKeyringContext } from '@/contexts/KeyringContext'
 import { AlertCircle, CheckCircle, Copy, Eye, EyeOff, Key, FileText, Users } from 'lucide-react'
 import { decryptPolkadotJsBackup, isPolkadotJsBackup } from '@/utils/polkadotJsBackup'
 import { getAllEncryptedAccounts, verifyWalletStoragePassword } from '@/utils/secureStorage'
+import { useTranslation } from 'react-i18next'
 
 type ImportMethod = 'mnemonic' | 'uri' | 'json'
 
 export default function ImportAccount() {
+  const { t } = useTranslation('pages')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { addFromMnemonic, addFromUri, addFromJson, isUnlocked, unlock } = useKeyringContext()
@@ -63,11 +65,11 @@ export default function ImportAccount() {
     // Validar contraseña si se proporciona
     if (password) {
       if (password.length < 8) {
-        setError('La contraseña debe tener al menos 8 caracteres')
+        setError(t('import.errors.passwordMin'))
         return
       }
       if (password !== confirmPassword) {
-        setError('Las contraseñas no coinciden')
+        setError(t('import.errors.passwordsMismatch'))
         return
       }
     }
@@ -79,7 +81,7 @@ export default function ImportAccount() {
       if (!isUnlocked && password) {
         const unlocked = await unlock(password)
         if (!unlocked) {
-          setError('Error al desbloquear el wallet. Verifica tu contraseña.')
+          setError(t('import.errors.unlockFailed'))
           setLoading(false)
           return
         }
@@ -88,16 +90,12 @@ export default function ImportAccount() {
       const alreadyStored = await getAllEncryptedAccounts()
       if (alreadyStored.length > 0) {
         if (!password) {
-          setError(
-            'Ya tienes cuentas cifradas en este dispositivo. Rellena el campo de contraseña con la misma con la que desbloqueas la billetera; ahí cifraremos en IndexedDB la nueva importación.'
-          )
+          setError(t('import.errors.needPasswordEncrypted'))
           setLoading(false)
           return
         }
         if (!(await verifyWalletStoragePassword(password))) {
-          setError(
-            'La contraseña de cifrado no coincide: debe ser la misma que desencripta el resto de cuentas (la del desbloqueo de la billetera en este aparato).'
-          )
+          setError(t('import.errors.passwordMismatchEnc'))
           setLoading(false)
           return
         }
@@ -108,13 +106,13 @@ export default function ImportAccount() {
       switch (method) {
         case 'mnemonic':
           if (!mnemonic.trim()) {
-            setError('Por favor ingresa tu frase de recuperación (mnemonic)')
+            setError(t('import.errors.needMnemonic'))
             setLoading(false)
             return
           }
 
           if (!validateMnemonic(mnemonic)) {
-            setError('La frase de recuperación debe tener 12, 15, 18, 21 o 24 palabras (BIP39)')
+            setError(t('import.errors.badMnemonic'))
             setLoading(false)
             return
           }
@@ -129,7 +127,7 @@ export default function ImportAccount() {
 
         case 'uri':
           if (!uri.trim()) {
-            setError('Por favor ingresa tu URI o seed')
+            setError(t('import.errors.needUri'))
             setLoading(false)
             return
           }
@@ -151,14 +149,14 @@ export default function ImportAccount() {
               const fileContent = await new Promise<string>((resolve, reject) => {
                 const reader = new FileReader()
                 reader.onload = (e) => resolve(e.target?.result as string)
-                reader.onerror = () => reject(new Error('Error al leer el archivo'))
+                reader.onerror = () => reject(new Error(t('import.errors.fileRead')))
                 reader.readAsText(jsonFile)
               })
               parsed = JSON.parse(fileContent)
             } else if (jsonData) {
               parsed = JSON.parse(jsonData)
             } else {
-              setError('Por favor selecciona un archivo JSON o pega el contenido')
+              setError(t('import.errors.needFileOrPaste'))
               setLoading(false)
               return
             }
@@ -166,7 +164,7 @@ export default function ImportAccount() {
             // Verificar si es un archivo de backup de Yohualli Protocol
             if (parsed.version && parsed.accounts && Array.isArray(parsed.accounts) && !parsed.encoded) {
               // Es un archivo de backup completo de Yohualli Protocol
-              setError('Este es un archivo de backup completo de Yohualli Protocol. Por favor, usa la opción "Importar Backup Completo" desde la pantalla de inicio (onboarding) o desde Configuración > Seguridad > Backup e Importación.')
+              setError(t('import.errors.fullBackupYohualli'))
               setLoading(false)
               return
             }
@@ -175,7 +173,7 @@ export default function ImportAccount() {
             if (isPolkadotJsBackup(parsed)) {
               // Es un backup completo de Polkadot.js con múltiples cuentas
               if (!jsonPassword) {
-                setError('Se requiere la contraseña del archivo JSON de Polkadot.js para desencriptar el backup completo')
+                setError(t('import.errors.needPolkadotJsonPassword'))
                 setLoading(false)
                 return
               }
@@ -185,7 +183,7 @@ export default function ImportAccount() {
                 const accounts = await decryptPolkadotJsBackup(parsed, jsonPassword)
                 
                 if (accounts.length === 0) {
-                  setError('No se encontraron cuentas en el backup')
+                  setError(t('import.errors.noAccountsInBackup'))
                   setLoading(false)
                   return
                 }
@@ -197,7 +195,7 @@ export default function ImportAccount() {
                 setLoading(false)
                 return
               } catch (err) {
-                setError(err instanceof Error ? err.message : 'Error al desencriptar el backup de Polkadot.js')
+                setError(err instanceof Error ? err.message : t('import.errors.decryptPolkadotFail'))
                 setLoading(false)
                 return
               }
@@ -207,7 +205,7 @@ export default function ImportAccount() {
             if (parsed.address && parsed.encoded) {
               // Es un JSON de Polkadot.js
               if (!jsonPassword) {
-                setError('Se requiere la contraseña del archivo JSON de Polkadot.js')
+                setError(t('import.errors.needPolkadotPassword'))
                 setLoading(false)
                 return
               }
@@ -220,7 +218,7 @@ export default function ImportAccount() {
             } else if (parsed.mnemonic) {
               // JSON con mnemonic simple
               if (!validateMnemonic(parsed.mnemonic)) {
-                setError('El mnemonic en el JSON debe tener 12, 15, 18, 21 o 24 palabras (BIP39)')
+                setError(t('import.errors.mnemonicInJson'))
                 setLoading(false)
                 return
               }
@@ -241,18 +239,18 @@ export default function ImportAccount() {
             } else {
               // Verificar si podría ser un backup completo de Yohualli Protocol
               if (parsed.version || (parsed.accounts && Array.isArray(parsed.accounts))) {
-                setError('Este parece ser un archivo de backup completo de Yohualli Protocol. Por favor, usa la opción "Importar Backup Completo" desde la pantalla de inicio o desde Configuración > Seguridad > Backup e Importación.')
+                setError(t('import.errors.fullBackupYohualli2'))
               } else {
-                setError('El JSON debe ser un archivo de Polkadot.js (con address y encoded) o contener "mnemonic", "uri" o "seed"')
+                setError(t('import.errors.badJson'))
               }
               setLoading(false)
               return
             }
           } catch (err) {
             if (err instanceof Error && err.message.includes('Invalid password')) {
-              setError('Contraseña incorrecta para el archivo JSON')
+              setError(t('import.errors.wrongJsonPassword'))
             } else {
-              setError(err instanceof Error ? err.message : 'JSON inválido. Por favor verifica el formato.')
+              setError(err instanceof Error ? err.message : t('import.errors.invalidJson'))
             }
             setLoading(false)
             return
@@ -282,10 +280,10 @@ export default function ImportAccount() {
           navigate('/accounts')
         }, 2000)
       } else {
-        setError('Error al importar la cuenta. Por favor verifica los datos e intenta de nuevo.')
+        setError(t('import.errors.importFailedGeneric'))
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al importar la cuenta')
+      setError(err instanceof Error ? err.message : t('import.errors.importFailed'))
     } finally {
       setLoading(false)
     }
@@ -299,12 +297,12 @@ export default function ImportAccount() {
 
   const handleImportSelectedAccounts = async () => {
     if (selectedAccounts.size === 0) {
-      setError('Por favor selecciona al menos una cuenta para importar')
+      setError(t('import.errors.selectAtLeast'))
       return
     }
 
     if (!jsonPassword) {
-      setError('Se requiere la contraseña del archivo JSON de Polkadot.js')
+      setError(t('import.errors.needPolkadotPassword'))
       return
     }
 
@@ -323,13 +321,13 @@ export default function ImportAccount() {
       // Si hay cuentas almacenadas, requerir contraseña para desbloquear
       if (hasStoredAccounts && !isUnlocked) {
         if (!password || password.trim().length === 0) {
-          setError('Se requiere una contraseña para desbloquear el wallet y guardar las cuentas importadas')
+          setError(t('import.errors.needPasswordUnlock'))
           setLoading(false)
           return
         }
         const unlocked = await unlock(password.trim())
         if (!unlocked) {
-          setError('Error al desbloquear el wallet. Verifica tu contraseña.')
+          setError(t('import.errors.unlockFailed'))
           setLoading(false)
           return
         }
@@ -338,7 +336,7 @@ export default function ImportAccount() {
       } else if (hasStoredAccounts && isUnlocked) {
         // Si el wallet ya está desbloqueado, requerir contraseña para guardar las nuevas cuentas
         if (!password || password.trim().length === 0) {
-          setError('Se requiere una contraseña para guardar las cuentas importadas. Usa la contraseña de tu wallet.')
+          setError(t('import.errors.needPasswordSave'))
           setLoading(false)
           return
         }
@@ -348,21 +346,21 @@ export default function ImportAccount() {
       } else {
         // Si no hay cuentas almacenadas, requerir contraseña para guardar las nuevas cuentas
         if (!password || password.trim().length === 0) {
-          setError('Se requiere una contraseña para proteger y guardar las cuentas importadas. Esta será tu contraseña principal del wallet.')
+          setError(t('import.errors.needPasswordNew'))
           setLoading(false)
           return
         }
 
         // Validar longitud mínima
         if (password.trim().length < 8) {
-          setError('La contraseña debe tener al menos 8 caracteres')
+          setError(t('import.errors.passwordMin'))
           setLoading(false)
           return
         }
 
         // Validar que coincidan
         if (confirmPassword && password.trim() !== confirmPassword.trim()) {
-          setError('Las contraseñas no coinciden')
+          setError(t('import.errors.passwordsMismatch'))
           setLoading(false)
           return
         }
@@ -372,7 +370,7 @@ export default function ImportAccount() {
 
       // Asegurar que tenemos una contraseña válida antes de importar
       if (!finalPassword || finalPassword.length === 0) {
-        setError('Se requiere una contraseña válida para guardar las cuentas importadas')
+        setError(t('import.errors.needValidPassword'))
         setLoading(false)
         return
       }
@@ -387,7 +385,7 @@ export default function ImportAccount() {
           // Verificar que tenga address y encoded
           if (!accountData.json || !accountData.json.address || !accountData.json.encoded) {
             const accountName = accountData.meta?.name || accountData.address
-            errors.push(`${accountName}: Formato de cuenta inválido (falta address o encoded)`)
+            errors.push(t('import.errors.invalidFormatLine', { name: accountName }))
             continue
           }
           
@@ -420,7 +418,13 @@ export default function ImportAccount() {
         setSelectedAccounts(new Set())
         
         if (errors.length > 0) {
-          setError(`Se importaron ${imported.length} cuenta(s), pero ${errors.length} fallaron: ${errors.join('; ')}`)
+          setError(
+            t('import.errors.importedPartial', {
+              n: imported.length,
+              failed: errors.length,
+              details: errors.join('; '),
+            })
+          )
         }
         
         // Limpiar formulario
@@ -438,10 +442,10 @@ export default function ImportAccount() {
           navigate('/accounts')
         }, 2000)
       } else {
-        setError(`No se pudo importar ninguna cuenta. Errores: ${errors.join('; ')}`)
+        setError(t('import.errors.importAllFailed', { details: errors.join('; ') }))
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al importar las cuentas')
+      setError(err instanceof Error ? err.message : t('import.errors.importBatchFailed'))
     } finally {
       setLoading(false)
     }
@@ -470,18 +474,18 @@ export default function ImportAccount() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Recuperar Cuenta</h1>
+        <h1 className="text-3xl font-bold">{t('import.title')}</h1>
         <p className="text-muted-foreground mt-2">
-          Importa una cuenta existente usando tu frase de recuperación, URI o archivo JSON
+          {t('import.subtitle')}
         </p>
       </div>
 
       {!showAccountSelection && (
         <Card>
           <CardHeader>
-            <CardTitle>Método de Importación</CardTitle>
+            <CardTitle>{t('import.methodTitle')}</CardTitle>
             <CardDescription>
-              Elige cómo deseas importar tu cuenta
+              {t('import.methodDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -489,29 +493,29 @@ export default function ImportAccount() {
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="mnemonic">
                 <Key className="mr-2 h-4 w-4" />
-                Frase de Recuperación
+                {t('import.tabMnemonic')}
               </TabsTrigger>
               <TabsTrigger value="uri">
                 <Key className="mr-2 h-4 w-4" />
-                URI / Seed
+                {t('import.tabUri')}
               </TabsTrigger>
               <TabsTrigger value="json">
                 <FileText className="mr-2 h-4 w-4" />
-                Archivo JSON
+                {t('import.tabJson')}
               </TabsTrigger>
             </TabsList>
 
             {/* Frase de Recuperación */}
             <TabsContent value="mnemonic" className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="mnemonic">Frase de recuperación (BIP39)</Label>
+                <Label htmlFor="mnemonic">{t('import.labelMnemonic')}</Label>
                 <div className="relative">
                   <Input
                     id="mnemonic"
                     type={showMnemonic ? 'text' : 'password'}
                     value={mnemonic}
                     onChange={(e) => setMnemonic(e.target.value)}
-                    placeholder="palabra1 palabra2 palabra3 ..."
+                    placeholder={t('import.phMnemonic')}
                     className="pr-10"
                   />
                   <Button
@@ -529,7 +533,7 @@ export default function ImportAccount() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Ingresa tu frase (12, 15, 18, 21 o 24 palabras) separadas por espacios
+                  {t('import.mnemonicHelp')}
                 </p>
               </div>
             </TabsContent>
@@ -537,16 +541,16 @@ export default function ImportAccount() {
             {/* URI / Seed */}
             <TabsContent value="uri" className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="uri">URI o Seed</Label>
+                <Label htmlFor="uri">{t('import.labelUri')}</Label>
                 <Input
                   id="uri"
                   type="text"
                   value={uri}
                   onChange={(e) => setUri(e.target.value)}
-                  placeholder="//Alice o seed phrase"
+                  placeholder={t('import.phUri')}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Ingresa tu URI (ej: //Alice) o seed phrase
+                  {t('import.uriHelp')}
                 </p>
               </div>
             </TabsContent>
@@ -650,7 +654,7 @@ export default function ImportAccount() {
       {!showAccountSelection && (
         <Card>
         <CardHeader>
-          <CardTitle>Configuración de la Cuenta</CardTitle>
+          <CardTitle>{t('import.configTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">

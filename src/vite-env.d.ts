@@ -9,6 +9,11 @@ interface ImportMetaEnv {
   readonly VITE_DEV_HMR_CLIENT_PORT?: string
   /** URL del relay Yohualli (wss://… en producción). Opcional en Atestaciones. */
   readonly VITE_YOHUALLI_RELAY_WS?: string
+  /**
+   * URL wss pública p. ej. `wss://….up.railway.app` — aparece un preset “Railway” junto
+   * a “Proxy /__yohualli_relay” y “Directo :8080” en Atestaciones.
+   */
+  readonly VITE_YOHUALLI_RELAY_RAILWAY?: string
   /** Trusted seeds de lab (SS58 coma-separados) para Tier-SybilRank; ver `trustedSeedsLab.ts`. */
   readonly VITE_LAB_TRUSTED_SS58?: string
   /** Trusted seeds EVM `0x` coma-separados si hay nodos en ese formato en el subgrafo. */

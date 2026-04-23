@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { Cpu, ExternalLink, FlaskConical, FolderOpen, Link2, ShieldCheck } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -85,6 +86,7 @@ function formatOnChainVerifyError(
  * `HonkVerifier` desplegado, o la muestra *square* (solo si ese contrato cuadra con el circuito square).
  */
 export default function ZkLab() {
+  const { t } = useTranslation('pages')
   const {
     address,
     publicClient,
@@ -328,51 +330,45 @@ export default function ZkLab() {
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <FlaskConical className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-bold tracking-tight">ZK Lab (Paseo)</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('zkLab.title')}</h1>
         </div>
         <p className="text-muted-foreground">
-          Verificación on-chain del verificador Solidity generado por Noir / Barretenberg en{' '}
-          <strong>Polkadot Hub Testnet</strong> (EVM, chain ID {paseoPassetHub.id}). La compilación del
-          contrato y el despliegue se hacen en el entorno de desarrollo (Foundry, etc.), no en el navegador.
+          <Trans
+            i18nKey="pages:zkLab.intro"
+            values={{ id: paseoPassetHub.id }}
+            components={[<strong key="ph" />]}
+            ns="pages"
+          />
         </p>
-        <Alert className="mt-3" variant="secondary">
+        <Alert className="mt-3 border bg-muted/40">
           <FlaskConical className="h-4 w-4" />
-          <AlertTitle className="text-sm">Quién usa ZK Lab</AlertTitle>
+          <AlertTitle className="text-sm">{t('zkLab.whoTitle')}</AlertTitle>
           <AlertDescription className="text-xs text-muted-foreground">
-            Página para <strong>verificar o generar pruebas</strong> frente a <code className="text-[10px]">HonkVerifier</code> /{' '}
-            <code className="text-[10px]">MerkleHonkRegistry</code> (Merkle v1, subject v0, muestras). No sustituye a{' '}
-            <em>Atestaciones</em> (grado social y firmas hacia otras identidades). Mapa de actores:{' '}
-            <code className="text-[10px]">docs/YOHUALLI_FLUJOS_UX_ACTORES.md</code>.
+            <Trans
+              i18nKey="pages:zkLab.whoBody"
+              components={[
+                <code className="text-[10px]" key="0" />,
+                <code className="text-[10px]" key="1" />,
+                <em key="2" />,
+                <code className="text-[10px]" key="3" />,
+              ]}
+            />
           </AlertDescription>
         </Alert>
       </div>
 
       <Alert>
         <ShieldCheck className="h-4 w-4" />
-        <AlertTitle>Flujo del laboratorio</AlertTitle>
+        <AlertTitle>{t('zkLab.flowTitle')}</AlertTitle>
         <AlertDescription className="space-y-2 text-sm">
             <div className="leading-relaxed">
-            <Badge variant="secondary">1</Badge> La <strong>prueba</strong> Barretenberg se puede generar con{' '}
-            <code className="text-xs">nargo</code> + <code className="text-xs">bb prove</code> (u{' '}
-            <code className="text-xs">npm run circuit:proof-hex:…</code>) en la máquina de desarrollo, o en
-            el navegador (tarjetas <em>Prover</em> abajo) para <code className="text-xs">yohualli_subject_commitment_v0</code>{' '}
-            (ligero) y, con límites, <code className="text-xs">yohualli_merkle_attest_v1</code> (ECDSA, pesado).
-            La verificación on-chain sigue siendo <code className="text-xs">eth_call</code> al <code className="text-xs">HonkVerifier</code> adecuado a cada circuito.
+            <Badge variant="secondary">1</Badge> {t('zkLab.flow1')}
           </div>
           <div className="leading-relaxed">
-            <Badge variant="secondary">2</Badge> Pegue la prueba (hex) y los públicos (un{' '}
-            <code className="text-xs">bytes32</code> por línea) del <strong>mismo</strong> circuito que usó
-            al generar el verificador on-chain. Usá <em>Cargar muestra Yohualli</em> para rellenar prueba y
-            públicos embebidos (misma generación) y, si tenés <code className="text-xs">VITE_PASEO_VERIFIER_ADDRESS</code>
-            , la dirección del contrato. La muestra <em>square</em> es otro circuito (kusama-noir-lab), solo
-            sirve con un verificador generado para ese circuito.
+            <Badge variant="secondary">2</Badge> {t('zkLab.flow2')}
           </div>
           <div className="leading-relaxed">
-            <Badge variant="secondary">3</Badge> La llamada <code className="text-xs">verify</code> es{' '}
-            <strong>lectura</strong> (<code className="text-xs">eth_call</code>): no consume gas de ejecución
-            en cadena. Para <strong>escribir estado</strong> (nullifier, voto, etc.) despliegue un contrato
-            wrapper que llame a <code className="text-xs">verify</code> y actualice storage; la PWA podrá
-            firmar esa transacción con la wallet EVM conectada.
+            <Badge variant="secondary">3</Badge> {t('zkLab.flow3')}
           </div>
         </AlertDescription>
       </Alert>
@@ -381,9 +377,9 @@ export default function ZkLab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Link2 className="h-5 w-5" />
-            Enlaces útiles
+            {t('zkLab.linksTitle')}
           </CardTitle>
-          <CardDescription>Explorador y documentación de red.</CardDescription>
+          <CardDescription>{t('zkLab.linksDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" asChild>
@@ -410,23 +406,23 @@ export default function ZkLab() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Wallet EVM (para transacciones futuras)</CardTitle>
+          <CardTitle>{t('zkLab.evmTitle')}</CardTitle>
           <CardDescription>
-            Conecte MetaMask u otra wallet inyectada; el PAS para gas en la capa EVM (revive) es el que aparece
-            abajo (<code className="text-xs">eth_getBalance</code>). El balance de la pantalla principal es
-            Substrate (otra cuenta / otro libro), no sustituye a este.
+            {t('zkLab.evmDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {!hasInjectedProvider && (
             <p className="text-sm text-amber-600 dark:text-amber-400">
-              No se detectó <code className="text-xs">window.ethereum</code>. Abra la PWA en un navegador con
-              wallet o use la app del proveedor.
+              <Trans
+                i18nKey="pages:zkLab.noEthereum"
+                components={[<code className="text-xs" key="w" />]}
+              />
             </p>
           )}
           <div className="flex flex-wrap items-center gap-3">
             <Button type="button" onClick={() => void connect()} disabled={!hasInjectedProvider}>
-              Conectar wallet
+              {t('zkLab.connectWallet')}
             </Button>
             {address && (
               <span className="text-sm font-mono text-muted-foreground break-all">{address}</span>
@@ -435,7 +431,7 @@ export default function ZkLab() {
           {address && (
             <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm space-y-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-muted-foreground">PAS (EVM Polkadot Hub)</span>
+                <span className="text-muted-foreground">{t('zkLab.pasLabel')}</span>
                 <Button
                   type="button"
                   variant="ghost"
@@ -444,7 +440,7 @@ export default function ZkLab() {
                   onClick={() => void refetchNativePasBalance()}
                   disabled={nativePasLoading}
                 >
-                  {nativePasLoading ? '…' : 'Actualizar'}
+                  {nativePasLoading ? '…' : t('zkLab.refresh')}
                 </Button>
               </div>
               {nativePasLoading ? (
@@ -683,7 +679,7 @@ export default function ZkLab() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Verificación on-chain (read-only)</CardTitle>
+          <CardTitle>{t('zkLab.verifyTitle')}</CardTitle>
           <CardDescription>
             <code className="text-xs">VITE_PASEO_VERIFIER_ADDRESS</code> (Honk) y, para el registro,{' '}
             <code className="text-xs">VITE_PASEO_MERKLE_REGISTRY_ADDRESS</code>.{' '}

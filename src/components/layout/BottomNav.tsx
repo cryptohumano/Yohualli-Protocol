@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { Home, Wallet, Send, FileText, Settings, Menu, X, Mountain } from 'lucide-react'
+import { Award, Wallet, Settings, Menu, X, FlaskConical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -15,15 +16,18 @@ import { AccountSwitcher } from '@/components/layout/AccountSwitcher'
 import { Separator } from '@/components/ui/separator'
 
 const navigation = [
-  { name: 'Inicio', href: '/', icon: Home, description: 'Ver resumen de cuentas y balances' },
-  { name: 'Cuentas', href: '/accounts', icon: Wallet, description: 'Gestionar tus cuentas' },
-  { name: 'Enviar', href: '/send', icon: Send, description: 'Enviar tokens' },
-  { name: 'Documentos', href: '/documents', icon: FileText, description: 'Gestionar documentos' },
-  { name: 'Bitácoras de Montañismo', href: '/mountain-logs', icon: Mountain, description: 'Registrar expediciones de montañismo' },
-  { name: 'Configuración', href: '/settings', icon: Settings, description: 'Ajustes y preferencias' },
-]
+  { id: 'accounts' as const, href: '/accounts', icon: Wallet },
+  { id: 'attestations' as const, href: '/attestations', icon: Award },
+  { id: 'zkLab' as const, href: '/zk-lab', icon: FlaskConical },
+  { id: 'settings' as const, href: '/settings', icon: Settings },
+] as const
+
+function pathMatchesItem(pathname: string, href: string): boolean {
+  return pathname === href || (href !== '/' && pathname.startsWith(`${href}/`))
+}
 
 export function BottomNav() {
+  const { t } = useTranslation('common')
   const location = useLocation()
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
@@ -36,7 +40,7 @@ export function BottomNav() {
   return (
     <>
       {/* FAB Button - Posicionado para fácil acceso con el pulgar */}
-      <div 
+      <div
         className="fixed bottom-4 right-4 md:hidden z-[100] pointer-events-auto"
         style={{
           bottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))',
@@ -48,41 +52,37 @@ export function BottomNav() {
             <Button
               size="lg"
               className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 bg-primary text-primary-foreground hover:bg-primary/90"
-              aria-label="Abrir menú de navegación"
+              aria-label={t('bottomNav.openMenu')}
             >
-              {isOpen ? (
-                <X className="h-6 w-6" />
-              ) : (
-                <Menu className="h-6 w-6" />
-              )}
+              {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </Button>
           </SheetTrigger>
-          <SheetContent 
-            side="bottom" 
+          <SheetContent
+            side="bottom"
             className="h-[70vh] rounded-t-2xl overflow-y-auto"
             style={{
               paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))',
             }}
           >
             <SheetHeader>
-              <SheetTitle>Navegación</SheetTitle>
-              <SheetDescription>
-                Cuenta activa y atajos de pantallas
-              </SheetDescription>
+              <SheetTitle>{t('bottomNav.sheetTitle')}</SheetTitle>
+              <SheetDescription>{t('bottomNav.sheetDescription')}</SheetDescription>
             </SheetHeader>
             <div className="mt-4 space-y-3">
               <div>
-                <p className="mb-2 text-xs font-medium text-muted-foreground">Cuenta activa (Substrate)</p>
+                <p className="mb-2 text-xs font-medium text-muted-foreground">
+                  {t('bottomNav.activeAccount')}
+                </p>
                 <AccountSwitcher className="w-full !max-w-none" showInlineLabel={false} />
               </div>
               <Separator />
             </div>
             <div className="mt-4 space-y-2 pb-4">
               {navigation.map((item) => {
-                const isActive = location.pathname === item.href
+                const isActive = pathMatchesItem(location.pathname, item.href)
                 return (
                   <button
-                    key={item.name}
+                    key={item.id}
                     onClick={() => handleNavigation(item.href)}
                     className={cn(
                       'w-full flex items-center gap-4 p-4 rounded-lg transition-colors text-left',
@@ -91,27 +91,31 @@ export function BottomNav() {
                         : 'bg-muted hover:bg-muted/80 text-foreground'
                     )}
                   >
-                    <item.icon className={cn(
-                      'h-6 w-6 flex-shrink-0',
-                      isActive ? 'text-primary-foreground' : 'text-muted-foreground'
-                    )} />
+                    <item.icon
+                      className={cn(
+                        'h-6 w-6 flex-shrink-0',
+                        isActive ? 'text-primary-foreground' : 'text-muted-foreground'
+                      )}
+                    />
                     <div className="flex-1 min-w-0">
-                      <div className={cn(
-                        'font-medium',
-                        isActive ? 'text-primary-foreground' : 'text-foreground'
-                      )}>
-                        {item.name}
+                      <div
+                        className={cn(
+                          'font-medium',
+                          isActive ? 'text-primary-foreground' : 'text-foreground'
+                        )}
+                      >
+                        {t(`bottomItems.${item.id}.title`)}
                       </div>
-                      <div className={cn(
-                        'text-sm mt-0.5',
-                        isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'
-                      )}>
-                        {item.description}
+                      <div
+                        className={cn(
+                          'text-sm mt-0.5',
+                          isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                        )}
+                      >
+                        {t(`bottomItems.${item.id}.description`)}
                       </div>
                     </div>
-                    {isActive && (
-                      <div className="h-2 w-2 rounded-full bg-primary-foreground" />
-                    )}
+                    {isActive && <div className="h-2 w-2 rounded-full bg-primary-foreground" />}
                   </button>
                 )
               })}
@@ -122,4 +126,3 @@ export function BottomNav() {
     </>
   )
 }
-
