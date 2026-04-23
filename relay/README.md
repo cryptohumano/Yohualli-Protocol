@@ -87,18 +87,12 @@ No hay autenticación: **cualquiera** que conozca la URL puede conectarse al rel
 
 ## Docker (opcional)
 
-**Desde la raíz del monorepo** (mismo criterio que Railway con contexto en el repo, no en `relay/` sola):
+**Desde la raíz del monorepo** (también lo que hace Railway: contexto = raíz, Dockerfile `relay/Dockerfile`):
 
 ```bash
-docker build -f Dockerfile.relay -t yohualli-relay .
+docker build -f relay/Dockerfile -t yohualli-relay .
+# equivalente: docker build -f Dockerfile.relay -t yohualli-relay .
 docker run -p 8080:8080 -e PORT=8080 yohualli-relay
 ```
 
-**Solo con carpeta `relay/`** como contexto (equivale a Railway: servicio con **Root directory = `relay`** y Dockerfile `Dockerfile`):
-
-```bash
-docker build -t yohualli-relay ./relay
-docker run -p 8080:8080 -e PORT=8080 yohualli-relay
-```
-
-Si Railway construyó con la raíz del repositorio y un Dockerfile que hace `COPY package.json` sin prefijo, falla: usá `Dockerfile.relay` en la raíz, **o** Root directory `relay` y el `Dockerfile` de esta carpeta.
+En Railway, **deja** `Dockerfile path` = `relay/Dockerfile` (o `/Dockerfile.relay` en la raíz) y **no** apiles “Root = relay” con este Dockerfile: los `COPY` asumen la raíz del repositorio.
