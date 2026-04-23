@@ -19,6 +19,8 @@ dist-ssr
 .yohualli-mnemonic.tmp
 *.tsbuildinfo
 package-lock.json
+# `relay/` usa npm con lock propio; la raíz usa Yarn. No ignorar el lock del relay.
+!relay/package-lock.json
 
 # Editor directories and files
 .vscode/*
