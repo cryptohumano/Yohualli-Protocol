@@ -5,8 +5,7 @@ on:
     branches:
       - main
       - master
-      - documents
-      - andino
+      - zk-paseo-noir
   workflow_dispatch:
 
 permissions:
@@ -55,7 +54,7 @@ jobs:
           if [ -f dist/index.html ]; then
             echo "✅ dist/index.html exists"
             echo "Checking for base path in HTML:"
-            # Verificar que tenga algún base path (puede ser /aura-pwa/ o el nombre del repo)
+            # Verificar que tenga ruta de assets absoluta bajo / (Vite + base de GitHub Pages)
             if grep -q 'href="/' dist/index.html || grep -q 'src="/' dist/index.html; then
               echo "✅ Base path found in HTML"
             else
@@ -64,8 +63,7 @@ jobs:
               head -20 dist/index.html
               exit 1
             fi
-            echo "First 20 lines of dist/index.html:"
-            head -20 dist/index.html
+            head -5 dist/index.html
           else
             echo "❌ dist/index.html not found"
             exit 1

@@ -7,7 +7,7 @@
 | [README.md](../README.md) (root) | Yes: **English** first, then **Español** |
 | [ENV_SAFETY.md](ENV_SAFETY.md) | Yes |
 | [YOHUALLI_TESTNET_OPERATIVO.md](YOHUALLI_TESTNET_OPERATIVO.md) | Yes |
-| [docs/aura/README.md](aura/README.md) & [ARCHIVE](aura/ARCHIVE.md) | Yes |
+| [docs/aura/README.md](aura/README.md) & [ARCHIVE](aura/ARCHIVE.md) | **Spanish only** — short cross-links to [aura-pwa](https://github.com/cryptohumano/aura-pwa); not part of the main EN/ES deliverable. |
 | [`.env.example`](../.env.example), [`.env.forge.example`](../.env.forge.example) | Bilingual comment headers (EN/ES); details in [ENV_SAFETY.md](ENV_SAFETY.md) |
 | [CIRCUITS_LAB.md](CIRCUITS_LAB.md) + [CIRCUITS_LAB.en.md](CIRCUITS_LAB.en.md) | [CIRCUITS_LAB.md](CIRCUITS_LAB.md) is authoritative (Spanish). [CIRCUITS_LAB.en.md](CIRCUITS_LAB.en.md) is a short English parallel; extend incrementally. |
 | [YOHUALLI_POC_PWA_PROVER_DILEMMA.md](YOHUALLI_POC_PWA_PROVER_DILEMMA.md) + [YOHUALLI_POC_PWA_PROVER_DILEMMA.en.md](YOHUALLI_POC_PWA_PROVER_DILEMMA.en.md) | Full text in **Spanish**; [`.en.md`](YOHUALLI_POC_PWA_PROVER_DILEMMA.en.md) is an English summary and pointer. |
@@ -19,6 +19,6 @@
 
 ## Idioma de la documentación del protocolo (ES)
 
-Se mantienen juntos **inglés** y **español (América Latina, registro tú, sin voseo en indicaciones técnicas)** en README raíz, entorno, testnet, carpeta Aura, archivos de ejemplo `.env`, y la tabla de arriba.
+Se mantienen juntos **inglés** y **español (América Latina, registro tú, sin voseo en indicaciones técnicas)** en README raíz, entorno, testnet, archivos de ejemplo `.env`, y la tabla de arriba. Los punteros en `docs/aura/` quedan solo en **español** (enlace *upstream*), sin duplicar narrativa bilingüe.
 
 [Yohualli Protocol draft 1.1.md](Yohualli%20Protocol%20draft%201.1.md) sigue **principalmente** en **español**; una **traducción** a inglés o un extracto normativo bilingüe podría acompañar el congelado de fórmulas hacia *white paper*.

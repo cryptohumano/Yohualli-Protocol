@@ -31,6 +31,14 @@ package-lock.json
 *.sln
 *.sw?
 
+# Local HTTPS (mkcert / setup-https.sh) — nunca commitear PEM
+.certs/
+
+# PWA: salidas de plugin en dev o builds viejos (VitePWA emite a dist/)
+dev-dist/
+/workbox-*.js
+/sw.js
+
 # Noir / nargo
 circuits/**/target/
 
